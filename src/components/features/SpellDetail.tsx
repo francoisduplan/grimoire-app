@@ -68,20 +68,29 @@ const AnimatedDie = ({ value, faces, index, themeColor, isMatch }: { value: numb
       animate={{ 
         scale: 1, 
         rotate: 0, 
-        opacity: 1,
-        boxShadow: isMatch 
-          ? ["0 0 8px 2px rgba(234,179,8,0.25)", "0 0 12px 4px rgba(234,179,8,0.4)", "0 0 8px 2px rgba(234,179,8,0.25)"]
-          : "0 0 0px 0px rgba(0,0,0,0)"
+        opacity: 1
       }}
       transition={{ 
         type: "spring", 
         stiffness: 260, 
         damping: 20, 
-        delay: index * 0.1,
-        boxShadow: isMatch ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }
+        delay: index * 0.1
       }}
       className="relative w-20 h-20 group rounded-2xl" // Wrapper de positionnement
     >
+      {/* Glow animé séparé pour eviter les freezes mobiles */}
+      {isMatch && (
+        <motion.div
+          className="absolute -inset-2 rounded-3xl blur-xl pointer-events-none"
+          initial={{ opacity: 0.25, scale: 0.98 }}
+          animate={{ opacity: [0.25, 0.6, 0.25], scale: [0.98, 1.05, 0.98] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            background: "radial-gradient(circle at center, rgba(234,179,8,0.35), rgba(234,179,8,0) 70%)",
+            willChange: "opacity, transform"
+          }}
+        />
+      )}
 
       {/* Le Dé (Conteneur visuel) */}
       <div className={clsx(
