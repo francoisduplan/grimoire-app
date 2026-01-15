@@ -78,17 +78,11 @@ const AnimatedDie = ({ value, faces, index, themeColor, isMatch }: { value: numb
       }}
       className="relative w-20 h-20 group rounded-2xl" // Wrapper de positionnement
     >
-      {/* Glow animé séparé pour eviter les freezes mobiles */}
+      {/* Glow stable (CSS) pour eviter les freezes mobiles */}
       {isMatch && (
-        <motion.div
-          className="absolute -inset-2 rounded-3xl blur-xl pointer-events-none"
-          initial={{ opacity: 0.25, scale: 0.98 }}
-          animate={{ opacity: [0.25, 0.6, 0.25], scale: [0.98, 1.05, 0.98] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-          style={{
-            background: "radial-gradient(circle at center, rgba(234,179,8,0.35), rgba(234,179,8,0) 70%)",
-            willChange: "opacity, transform"
-          }}
+        <div
+          className="dice-glow"
+          style={{ "--dice-glow-color": "234,179,8" } as React.CSSProperties}
         />
       )}
 
