@@ -79,30 +79,6 @@ h1, h2, h3, h4, h5, h6 {
 .text-gold { color: var(--magic-gold); }
 .border-magic { border: 1px solid rgba(212, 180, 131, 0.15); }
 
-/* Glow des dés (stable sur mobile) */
-@keyframes dice-glow-pulse {
-  0%, 100% { opacity: 0.25; transform: scale(0.98); }
-  50% { opacity: 0.6; transform: scale(1.05); }
-}
-.dice-glow {
-  position: absolute;
-  inset: -0.5rem;
-  border-radius: 1.5rem;
-  pointer-events: none;
-  background: radial-gradient(circle at center, rgba(var(--dice-glow-color, 234,179,8), 0.35), rgba(var(--dice-glow-color, 234,179,8), 0) 70%);
-  filter: blur(18px);
-  animation: dice-glow-pulse 1.6s ease-in-out infinite;
-  will-change: transform, opacity;
-  transform: translateZ(0);
-}
-@media (hover: none) and (pointer: coarse) {
-  .dice-glow {
-    animation: none;
-    opacity: 0.35;
-    filter: blur(12px);
-  }
-}
-
 /* Animation de pulse magique */
 @keyframes magic-pulse {
   0%, 100% { opacity: 0.5; transform: scale(1); }

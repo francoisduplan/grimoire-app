@@ -68,23 +68,20 @@ const AnimatedDie = ({ value, faces, index, themeColor, isMatch }: { value: numb
       animate={{ 
         scale: 1, 
         rotate: 0, 
-        opacity: 1
+        opacity: 1,
+        boxShadow: isMatch 
+          ? ["0 0 8px 2px rgba(234,179,8,0.25)", "0 0 12px 4px rgba(234,179,8,0.4)", "0 0 8px 2px rgba(234,179,8,0.25)"]
+          : "0 0 0px 0px rgba(0,0,0,0)"
       }}
       transition={{ 
         type: "spring", 
         stiffness: 260, 
         damping: 20, 
-        delay: index * 0.1
+        delay: index * 0.1,
+        boxShadow: isMatch ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }
       }}
       className="relative w-20 h-20 group rounded-2xl" // Wrapper de positionnement
     >
-      {/* Glow stable (CSS) pour eviter les freezes mobiles */}
-      {isMatch && (
-        <div
-          className="dice-glow"
-          style={{ "--dice-glow-color": "234,179,8" } as React.CSSProperties}
-        />
-      )}
 
       {/* Le Dé (Conteneur visuel) */}
       <div className={clsx(
@@ -601,7 +598,15 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                    transition={{ delay: 0.2 + (result.rolls.length * 0.1), type: "spring" }}
                    className="text-center relative"
                  >
-                    <div className={clsx("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 blur-[50px] opacity-40", theme.glow)}></div>
+                    <div
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 opacity-50 pointer-events-none"
+                      style={{
+                        background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.5), rgba(${theme.glowRgb}, 0) 70%)`,
+                        filter: "blur(32px)",
+                        transform: "translateZ(0)",
+                        willChange: "transform, opacity"
+                      }}
+                    />
                     <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">Total Dégâts</span>
                     <span className={clsx("text-8xl font-cinzel font-bold drop-shadow-2xl", theme.accent.split(' ')[0])}>
                       {result.total}
