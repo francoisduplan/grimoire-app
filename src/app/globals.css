@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  /* Palette Dark Fantasy AAA */
+  --background: #030014; /* Noir très profond teinté d'indigo */
+  --foreground: #e4e4e7;
+  
+  /* Textures */
+  --card-bg: #120f1d;
+  --card-border: #2d2640;
+  
+  /* Accents */
+  --magic-gold: #d4b483;
+  --magic-gold-dim: #8a7350;
+  
+  --fire-glow: #ff5500;
+  --fire-core: #ffcc00;
+  
+  --arcane-glow: #a855f7;
+  --arcane-core: #e9d5ff;
+
+  --muted: #1e1b2e;
+  --muted-foreground: #94a3b8;
+}
+
+@theme inline {
+  --font-cinzel: var(--font-cinzel);
+  --font-spectral: var(--font-spectral);
+  
+  --color-magic-gold: var(--magic-gold);
+  --color-magic-gold-dim: var(--magic-gold-dim);
+}
+
+body {
+  background-color: var(--background);
+  /* Superposition de calques pour l'effet "Nébuleuse" */
+  background-image: 
+    /* 1. Lumière divine venant du haut (Halo blanc/bleuté) */
+    radial-gradient(circle at 50% -20%, rgba(120, 119, 198, 0.2), transparent 60%),
+    
+    /* 2. Nappe de brume violette en bas à droite */
+    radial-gradient(circle at 100% 50%, rgba(76, 29, 149, 0.15), transparent 50%),
+    
+    /* 3. Nappe de brume indigo en bas à gauche */
+    radial-gradient(circle at 0% 80%, rgba(49, 46, 129, 0.2), transparent 50%),
+    
+    /* 4. Texture de bruit (Grain) pour l'aspect matériel */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    
+  background-attachment: fixed;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 256px 256px;
+  
+  font-family: var(--font-spectral), serif;
+  overflow-x: hidden;
+  color: var(--foreground);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-cinzel), serif;
+}
+
+/* Scrollbar immersive */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Utilitaires */
+.text-gold { color: var(--magic-gold); }
+.border-magic { border: 1px solid rgba(212, 180, 131, 0.15); }
+
+/* Animation de pulse magique */
+@keyframes magic-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-magic-pulse {
+  animation: magic-pulse 3s ease-in-out infinite;
+}
+
+/* Animation de glow battant (lent) pour les effets spéciaux */
+@keyframes pulse-slow {
+  0%, 100% { 
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.3), inset 0 0 10px rgba(251, 191, 36, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.5), inset 0 0 20px rgba(251, 191, 36, 0.2);
+  }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Animation spin lent pour les effets de canalisation */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
