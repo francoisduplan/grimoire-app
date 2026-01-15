@@ -599,10 +599,10 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                    className="text-center relative"
                  >
                     <div
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 opacity-50 pointer-events-none"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 opacity-60 pointer-events-none"
                       style={{
-                        background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.5), rgba(${theme.glowRgb}, 0) 70%)`,
-                        filter: "blur(32px)",
+                        background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.7), rgba(${theme.glowRgb}, 0) 72%)`,
+                        filter: "blur(38px)",
                         transform: "translateZ(0)",
                         willChange: "transform, opacity"
                       }}
