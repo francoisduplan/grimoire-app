@@ -301,5 +301,20 @@ export const SPELLS_DATA: Spell[] = [
     description: "Vous avez 2 points de chance. Quand vous faites un jet d'attaque, de caractéristique ou de sauvegarde, vous pouvez dépenser un point pour lancer un D20 supplémentaire et choisir le résultat.",
     effect: { value: "2", label: "Points de Chance", type: "Don" },
     classes: ["Don"]
+  },
+  {
+    id: "spell-sniper",
+    name: "Incantateur d'Élite",
+    level: 0,
+    school: "Don",
+    castingTime: "Passif",
+    range: "Soi",
+    components: [],
+    duration: "Permanent",
+    concentration: false,
+    ritual: false,
+    description: "Vous bénéficiez des avantages suivants.\n\nAugmentation de caractéristiques. Augmentez votre Intelligence, Sagesse ou Charisme de 1, jusqu'à un maximum de 20.\n\nIgnorer la couverture. Vos jets d'attaque de sorts ignorent la demi-couverture et les trois-quarts de couverture.\n\nLancer des sorts en mêlée. Être à moins de 1,50 mètre d'un ennemi n'inflige pas de désavantage à vos jets d'attaque avec les sorts.\n\nPortée augmentée. Lorsque vous lancez un sort d'une portée d'au moins 3 mètres et nécessitant un jet d'attaque, vous pouvez augmenter sa portée de 18 mètres.",
+    effect: { value: "+18m", label: "Portée Sorts", type: "Don" },
+    classes: ["Don"]
   }
 ];

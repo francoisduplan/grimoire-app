@@ -5,6 +5,7 @@ import { Zap, Heart, Shield, Flame, Moon, Sparkles, Crown, X, Minus, Plus, Dropl
 import { SpellCard } from "@/components/ui/SpellCard";
 import { SPELLS_DATA } from '@/data/spells';
 import { SpellDetail } from '@/components/features/SpellDetail';
+import { ShortRestModal } from '@/components/features/ShortRestModal';
 import { useState } from "react";
 import { Spell } from "@/types";
 import { clsx } from "clsx";
@@ -16,6 +17,7 @@ export default function Home() {
   
   const [showHpModal, setShowHpModal] = useState(false);
   const [showRestModal, setShowRestModal] = useState(false);
+  const [showShortRestModal, setShowShortRestModal] = useState(false);
   const [hpInput, setHpInput] = useState("1");
 
   // États locaux pour les aptitudes spéciales
@@ -202,17 +204,19 @@ export default function Home() {
     .map(id => SPELLS_DATA.find(s => s.id === id))
     .filter((s): s is Spell => !!s);
 
-  // Groupe A : Pouvoirs & Tours de Magie (Toujours là)
+  // Groupe A : Cantrips & Pouvoirs de classe (Toujours là)
+  // On exclut les Dons (restent dans le grimoire uniquement)
   // On filtre 'lucky' et 'chronal-shift' car ils ont leur propre affichage interactif
   const powersAndCantrips = allKnownSpellsData
     .filter(s => 
-      (s.level === 0 || ['Don', 'Aptitude', 'Chronomancie'].includes(s.school)) && 
+      (s.level === 0 || ['Aptitude', 'Chronomancie'].includes(s.school)) && 
+      s.school !== 'Don' &&
       !['lucky', 'chronal-shift'].includes(s.id)
     )
     .sort((a, b) => {
-        // Tri : D'abord les Aptitudes/Dons, puis les Cantrips
-        const isFeatA = ['Don', 'Aptitude', 'Chronomancie'].includes(a.school);
-        const isFeatB = ['Don', 'Aptitude', 'Chronomancie'].includes(b.school);
+        // Tri : D'abord les Aptitudes, puis les Cantrips
+        const isFeatA = ['Aptitude', 'Chronomancie'].includes(a.school);
+        const isFeatB = ['Aptitude', 'Chronomancie'].includes(b.school);
         if (isFeatA && !isFeatB) return -1;
         if (!isFeatA && isFeatB) return 1;
         return a.name.localeCompare(b.name);
@@ -710,7 +714,10 @@ export default function Home() {
 
               <div className="space-y-4">
                 <button 
-                  onClick={handleShortRest}
+                  onClick={() => {
+                    setShowRestModal(false);
+                    setShowShortRestModal(true);
+                  }}
                   className="w-full group relative p-4 rounded-xl border border-white/5 bg-[#121212] hover:bg-white/5 transition-all overflow-hidden text-left"
                 >
                   <div className="flex items-center gap-4 relative z-10">
@@ -719,7 +726,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h4 className="font-cinzel text-lg text-amber-100 group-hover:text-white transition-colors">Repos Court</h4>
-                      <p className="text-xs text-neutral-500 mt-1">1 heure • 1D6 PV + 1 Slot</p>
+                      <p className="text-xs text-neutral-500 mt-1">1 heure • Dés de vie + Restauration</p>
                     </div>
                   </div>
                 </button>
@@ -845,6 +852,13 @@ export default function Home() {
         </div>
       )}
       
+      {/* --- MODALE REPOS COURT --- */}
+      <AnimatePresence>
+        {showShortRestModal && (
+          <ShortRestModal onClose={() => setShowShortRestModal(false)} />
+        )}
+      </AnimatePresence>
+
       <style jsx global>{`
         .clip-path-rune {
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);

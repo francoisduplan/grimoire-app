@@ -68,4 +68,9 @@ export interface CharacterStats {
     available: boolean;
     spellId: string | null;
   };
+  hitDice: {
+    used: number;      // Nombre de dés utilisés
+    die: number;       // Type de dé (6 pour magicien)
+  };
+  arcaneRecoveryUsed: boolean; // Restauration arcanique utilisée aujourd'hui
 }

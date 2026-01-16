@@ -8,6 +8,7 @@ interface CharacterContextType {
   character: CharacterStats;
   castSpell: (level: number) => void;
   recoverSlot: (level: number) => void;
+  recoverSlots: (slotsToRecover: { level: number; count: number }[]) => void;
   prepareSpell: (spellId: string) => void;
   unprepareSpell: (spellId: string) => void;
   learnSpell: (spellId: string) => void;
@@ -23,6 +24,8 @@ interface CharacterContextType {
   removeEffect: (effectId: string) => void;
   setFreeCastSpell: (spellId: string) => void;
   consumeFreeCast: () => void;
+  useHitDice: (count: number) => number;
+  useArcaneRecovery: () => void;
 }
 
 const CharacterContext = createContext<CharacterContextType | undefined>(undefined);
@@ -68,11 +71,13 @@ const INITIAL_CHARACTER: CharacterStats = {
     'fire-bolt', 'mage-hand', 'minor-illusion', 'message', 'true-strike',
     'thunderwave', 'chromatic-orb', 'comprehend-languages', 'detect-magic', 'feather-fall', 'identify', 'grease', 'shield', 'mage-armor', 'magic-missile',
     'mirror-image', 'scorching-ray',
-    'chronal-shift', 'lucky'
+    'chronal-shift', 'lucky', 'spell-sniper'
   ],
   slots: getMaxSpellSlots(4),
   activeEffects: [],
   dailyFreeCast: { available: true, spellId: null },
+  hitDice: { used: 0, die: 6 }, // Magicien = d6
+  arcaneRecoveryUsed: false,
 };
 
 export function CharacterProvider({ children }: { children: React.ReactNode }) {
@@ -122,6 +127,50 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
       });
       return { ...prev, slots: newSlots };
     });
+  };
+
+  const recoverSlots = (slotsToRecover: { level: number; count: number }[]) => {
+    setCharacter(prev => {
+      const newSlots = prev.slots.map(slot => {
+        const recovery = slotsToRecover.find(r => r.level === slot.level);
+        if (recovery) {
+          const newUsed = Math.max(0, slot.used - recovery.count);
+          return { ...slot, used: newUsed };
+        }
+        return slot;
+      });
+      return { ...prev, slots: newSlots };
+    });
+  };
+
+  const useHitDice = (count: number): number => {
+    let totalHeal = 0;
+    const conMod = Math.floor((character.abilities.CON - 10) / 2);
+    
+    setCharacter(prev => {
+      const available = prev.level - prev.hitDice.used;
+      const actualCount = Math.min(count, available);
+      
+      // Lancer les dés
+      for (let i = 0; i < actualCount; i++) {
+        const roll = Math.floor(Math.random() * prev.hitDice.die) + 1;
+        totalHeal += Math.max(1, roll + conMod); // Minimum 1 PV par dé
+      }
+      
+      const newHp = Math.min(prev.hp.max, prev.hp.current + totalHeal);
+      
+      return {
+        ...prev,
+        hitDice: { ...prev.hitDice, used: prev.hitDice.used + actualCount },
+        hp: { ...prev.hp, current: newHp }
+      };
+    });
+    
+    return totalHeal;
+  };
+
+  const useArcaneRecovery = () => {
+    setCharacter(prev => ({ ...prev, arcaneRecoveryUsed: true }));
   };
 
   const prepareSpell = (spellId: string) => {
@@ -263,12 +312,20 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
   };
 
   const longRest = () => {
-    setCharacter(prev => ({
-      ...prev,
-      hp: { ...prev.hp, current: prev.hp.max },
-      slots: prev.slots.map(slot => ({ ...slot, used: 0 })),
-      dailyFreeCast: { available: true, spellId: null }
-    }));
+    setCharacter(prev => {
+      // Récupère la moitié des dés de vie (minimum 1)
+      const hitDiceRecovered = Math.max(1, Math.floor(prev.level / 2));
+      const newHitDiceUsed = Math.max(0, prev.hitDice.used - hitDiceRecovered);
+      
+      return {
+        ...prev,
+        hp: { ...prev.hp, current: prev.hp.max },
+        slots: prev.slots.map(slot => ({ ...slot, used: 0 })),
+        dailyFreeCast: { available: true, spellId: null },
+        hitDice: { ...prev.hitDice, used: newHitDiceUsed },
+        arcaneRecoveryUsed: false
+      };
+    });
   };
 
   return (
@@ -276,6 +333,7 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
       character,
       castSpell,
       recoverSlot,
+      recoverSlots,
       prepareSpell,
       unprepareSpell,
       learnSpell,
@@ -290,7 +348,9 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
       addEffect,
       removeEffect,
       setFreeCastSpell,
-      consumeFreeCast
+      consumeFreeCast,
+      useHitDice,
+      useArcaneRecovery
     }}>
       {children}
     </CharacterContext.Provider>
