@@ -952,12 +952,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
 
         {/* --- BODY --- */}
         <div 
-          className={clsx(
-            "flex-1 px-8 pb-8 relative",
-            rollState === 'rolling' 
-              ? "overflow-hidden min-h-[350px]" 
-              : "overflow-y-auto"
-          )}
+          className="flex-1 px-8 pb-8 relative overflow-y-auto"
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
         >
           
@@ -1082,7 +1077,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
               <motion.div
                 key="rolling"
                 initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }}
-                className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                className="flex flex-col items-center justify-center h-[300px]"
               >
                  <div className="relative">
                     {/* Pulsing Orb Core */}
