@@ -1330,6 +1330,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                             atk.skipped ? "bg-neutral-900/50 border-neutral-800 text-neutral-600" :
                             isThisBounce ? "bg-amber-950/20 border-amber-500/30" :
                             atk.isCrit ? "bg-amber-950/30 border-amber-500/50" :
+                            atk.isFumble ? "bg-red-950/30 border-red-500/50" :
                             "bg-white/5 border-white/10"
                           )}
                         >
@@ -1343,6 +1344,19 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                             >
                               Critique
+                            </motion.div>
+                          )}
+                          
+                          {/* Badge Échec Critique */}
+                          {atk.isFumble && !atk.skipped && (
+                            <motion.div
+                              className="absolute top-0 right-0 px-2 py-0.5 bg-gradient-to-r from-red-600 to-red-500 text-[9px] font-bold text-white uppercase tracking-wider rounded-bl-lg"
+                              animate={{ 
+                                boxShadow: ["0 0 5px rgba(239,68,68,0.5)", "0 0 15px rgba(239,68,68,0.8)", "0 0 5px rgba(239,68,68,0.5)"]
+                              }}
+                              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                              Échec
                             </motion.div>
                           )}
                           
