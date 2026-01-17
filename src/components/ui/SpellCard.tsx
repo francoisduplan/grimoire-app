@@ -3,6 +3,7 @@
 import { Spell } from "@/types";
 import { Flame, Shield, Eye, Sparkles, Skull, Zap, Move, Clock, Box, Brain, ArrowUp, ArrowDown, Book, Star } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useCharacter } from "@/context/CharacterContext";
 
 interface SpellCardProps {
   spell: Spell;
@@ -14,6 +15,33 @@ interface SpellCardProps {
 }
 
 export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false, isActiveEffect = false, isFreeCast = false }: SpellCardProps) {
+  const { character } = useCharacter();
+  
+  // Calcul du scaling des cantrips basé sur le niveau du personnage
+  const getCantripScaling = () => {
+    if (spell.level !== 0 || !spell.damage || !spell.higherLevels) return 1;
+    const charLevel = character.level || 1;
+    if (charLevel >= 17) return 4;
+    if (charLevel >= 11) return 3;
+    if (charLevel >= 5) return 2;
+    return 1;
+  };
+  const cantripMultiplier = getCantripScaling();
+  
+  // Obtenir les dés affichés (avec scaling cantrip si applicable)
+  const getDisplayDice = () => {
+    if (!spell.damage) return null;
+    
+    // Scaling des cantrips
+    if (spell.level === 0 && spell.higherLevels && cantripMultiplier > 1) {
+      const match = spell.damage.dice.match(/(\d+)D(\d+)/i);
+      if (match) {
+        return `${cantripMultiplier}D${match[2]}`;
+      }
+    }
+    
+    return spell.damage.displayDice || spell.damage.dice;
+  };
   
   const isRituel = spell.ritual;
   const isDon = ['Don', 'Aptitude', 'Chronomancie'].includes(spell.school);
@@ -88,18 +116,37 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
   // Calcul des dégâts min-max pour l'affichage "8~48"
   const getDamageRange = () => {
     if (!spell.damage) return null;
-    // Support des notations "d" et "D"
-    const diceStr = spell.damage.dice.toLowerCase();
-    const parts = diceStr.split('d');
-    if (parts.length === 2) {
-      const numDice = parseInt(parts[0]);
-      const dieSize = parseInt(parts[1]);
-      if (!isNaN(numDice) && !isNaN(dieSize)) {
-        return `${numDice}~${numDice * dieSize}`;
+    
+    // Pour les cantrips avec scaling, utiliser les dés modifiés
+    let diceStr = spell.damage.dice.toLowerCase();
+    if (spell.level === 0 && spell.higherLevels && cantripMultiplier > 1) {
+      const match = spell.damage.dice.match(/(\d+)D(\d+)/i);
+      if (match) {
+        diceStr = `${cantripMultiplier}d${match[2]}`;
       }
     }
-    // Cas spécial pour 3x(1D4+1) ou 3x 2D6 etc
-    if (diceStr.includes('3x')) return "6~15"; 
+    
+    // Cas spécial Magic Missile: 3x(1D4+1) = 3 × (1+1) à 3 × (4+1) = 6~15
+    if (diceStr.includes('3x') && diceStr.includes('1d4+1')) {
+      return "6~15";
+    }
+    
+    // Cas Rayon ardent et autres "3x XDY": utiliser displayDice si présent
+    if (diceStr.includes('x')) {
+      return null; // On n'affiche pas de range pour les multi-attaques
+    }
+    
+    // Standard: "XDY" ou "XDY+Z"
+    const match = diceStr.match(/(\d+)d(\d+)(?:\+(\d+))?/);
+    if (match) {
+      const numDice = parseInt(match[1]);
+      const dieSize = parseInt(match[2]);
+      const modifier = match[3] ? parseInt(match[3]) : 0;
+      const min = numDice + modifier;
+      const max = numDice * dieSize + modifier;
+      return `${min}~${max}`;
+    }
+    
     return null;
   };
 
@@ -192,7 +239,7 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
               )}
             </div>
             <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg border border-white/5">
-              <span className={clsx("font-bold font-mono text-sm", theme.color)}>{spell.damage.dice}</span>
+              <span className={clsx("font-bold font-mono text-sm", cantripMultiplier > 1 ? "text-amber-400" : theme.color)}>{getDisplayDice()}</span>
               <span className="text-xs text-gray-400 uppercase">{spell.damage.type}</span>
             </div>
           </div>

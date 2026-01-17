@@ -1,11 +1,11 @@
 "use client";
 
 import { Spell } from "@/types";
-import { X, Clock, Ruler, Box, Hourglass, Flame, Shield, Skull, Sparkles, Zap, Brain, Move, BookOpen, Hand, Trash2, Lock, Dices, RefreshCw, Wand2, Star } from 'lucide-react';
+import { X, Clock, Ruler, Box, Hourglass, Flame, Shield, Skull, Sparkles, Zap, Brain, Move, BookOpen, Hand, Trash2, Lock, Dices, RefreshCw, Wand2, Star, Link } from 'lucide-react';
 import { useCharacter } from "@/context/CharacterContext";
 import { clsx } from "clsx";
 import { SPELLS_DATA } from "@/data/spells";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { calculateModifier } from "@/lib/dnd-rules";
 
@@ -15,99 +15,181 @@ interface SpellDetailProps {
 }
 
 // --- LOGIQUE DE DÉS ---
+type AttackResult = {
+  attackRoll: number;      // Résultat du D20
+  attackTotal: number;     // D20 + bonus
+  isCrit: boolean;         // 20 naturel
+  isFumble: boolean;       // 1 naturel
+  damageRolls: number[];   // Dés de dégâts
+  damageTotal: number;     // Total dégâts
+};
+
 type RollResult = {
   total: number;
   rolls: number[];      // Les résultats bruts [3, 4, 1]
   faces: number;        // Type de dé (d8, d6...)
   modifier: number;     // Bonus fixe (+3)
   isMultiHit: boolean;  // Pour magic missile (3x...)
+  attacks?: AttackResult[]; // Pour les sorts avec jet d'attaque
 };
 
-const parseAndRoll = (diceStr: string): RollResult => {
-  // Normaliser en minuscules pour le parsing
-  const normalizedStr = diceStr.toLowerCase();
-  
-  // Cas spécial Magic Missile: "3x(1d4+1)" -> On considère ça comme 3 jets séparés mais on veut voir les dés
-  if (normalizedStr.includes('3x')) {
-    const rolls = [];
-    let total = 0;
-    for(let i=0; i<3; i++) {
-       const val = Math.floor(Math.random() * 4) + 1; // 1D4
-       rolls.push(val + 1); // +1 intégré dans le résultat affiché pour MM
-       total += val + 1;
-    }
-    return { total, rolls, faces: 4, modifier: 1, isMultiHit: true };
-  }
-
-  // Standard "1D10", "2D6", "1D8+3"
-  // Nettoyage
-  const cleanStr = normalizedStr.replace(/\s/g, '');
-  const [base, modifierStr] = cleanStr.split('+');
+const parseDice = (diceStr: string): { count: number; die: number; modifier: number } => {
+  const normalizedStr = diceStr.toLowerCase().replace(/\s/g, '');
+  const [base, modifierStr] = normalizedStr.split('+');
   const modifier = modifierStr ? parseInt(modifierStr) : 0;
   const [countStr, dieStr] = base.split('d');
   const count = parseInt(countStr);
   const die = parseInt(dieStr);
+  return { count, die, modifier };
+};
 
+const rollDamage = (diceStr: string): { rolls: number[]; total: number; faces: number; modifier: number } => {
+  const { count, die, modifier } = parseDice(diceStr);
+  const rolls: number[] = [];
   let total = 0;
-  const rolls = [];
+  
   for (let i = 0; i < count; i++) {
     const roll = Math.floor(Math.random() * die) + 1;
     total += roll;
     rolls.push(roll);
   }
   total += modifier;
+  
+  return { rolls, total, faces: die, modifier };
+};
 
-  return { total, rolls, faces: die, modifier, isMultiHit: false };
+const parseAndRoll = (diceStr: string, attackCount?: number, attackBonus?: number): RollResult => {
+  // Normaliser en minuscules pour le parsing
+  const normalizedStr = diceStr.toLowerCase();
+  
+  // Cas spécial Magic Missile: "Nx(1d4+1)" -> N jets de 1D4, chacun avec +1
+  const magicMissileMatch = normalizedStr.match(/(\d+)x\(1d4\+1\)/);
+  if (magicMissileMatch) {
+    const projectileCount = parseInt(magicMissileMatch[1]);
+    const rolls = [];
+    let total = 0;
+    for(let i=0; i<projectileCount; i++) {
+       const val = Math.floor(Math.random() * 4) + 1; // 1D4 (résultat 1-4)
+       rolls.push(val); // On affiche juste le dé
+       total += val + 1; // +1 par projectile ajouté au total
+    }
+    // modifier: N car il y a +1 par projectile
+    return { total, rolls, faces: 4, modifier: projectileCount, isMultiHit: true };
+  }
+
+  // Si c'est un sort avec jets d'attaque multiples
+  if (attackCount && attackCount > 0 && attackBonus !== undefined) {
+    const attacks: AttackResult[] = [];
+    let grandTotal = 0;
+    const allRolls: number[] = [];
+    const { die, modifier } = parseDice(diceStr);
+    
+    for (let i = 0; i < attackCount; i++) {
+      const attackRoll = Math.floor(Math.random() * 20) + 1;
+      const isCrit = attackRoll === 20;
+      const isFumble = attackRoll === 1;
+      const attackTotal = attackRoll + attackBonus;
+      
+      // Lancer les dégâts (même si l'attaque rate, on les montre)
+      const damage = rollDamage(diceStr);
+      // Double les dégâts sur un crit
+      const finalDamage = isCrit ? damage.total * 2 : damage.total;
+      
+      attacks.push({
+        attackRoll,
+        attackTotal,
+        isCrit,
+        isFumble,
+        damageRolls: damage.rolls,
+        damageTotal: finalDamage
+      });
+      
+      grandTotal += finalDamage;
+      allRolls.push(...damage.rolls);
+    }
+    
+    return { 
+      total: grandTotal, 
+      rolls: allRolls, 
+      faces: die, 
+      modifier, 
+      isMultiHit: attackCount > 1,
+      attacks 
+    };
+  }
+
+  // Standard "1D10", "2D6", "1D8+3"
+  const damage = rollDamage(diceStr);
+  return { ...damage, isMultiHit: false };
 };
 
 // --- COMPOSANT DÉ ANIMÉ ---
-const AnimatedDie = ({ value, faces, index, themeColor, isMatch }: { value: number, faces: number, index: number, themeColor: string, isMatch?: boolean }) => {
+const AnimatedDie = ({ value, faces, index, themeColor, isMax, isLinked }: { 
+  value: number, 
+  faces: number, 
+  index: number, 
+  themeColor: string, 
+  isMax?: boolean,
+  isLinked?: boolean
+}) => {
   return (
     <motion.div
       initial={{ scale: 0, rotate: -180, opacity: 0 }}
       animate={{ 
-        scale: 1, 
+        scale: isLinked ? [1, 1.05, 1] : 1, 
         rotate: 0, 
         opacity: 1,
-        boxShadow: isMatch 
+        boxShadow: isMax 
           ? ["0 0 8px 2px rgba(234,179,8,0.25)", "0 0 12px 4px rgba(234,179,8,0.4)", "0 0 8px 2px rgba(234,179,8,0.25)"]
-          : "0 0 0px 0px rgba(0,0,0,0)"
+          : isLinked
+            ? ["0 0 10px 2px rgba(139,92,246,0.5)", "0 0 20px 6px rgba(139,92,246,0.8)", "0 0 10px 2px rgba(139,92,246,0.5)"]
+            : "0 0 0px 0px rgba(0,0,0,0)"
       }}
       transition={{ 
         type: "spring", 
         stiffness: 260, 
         damping: 20, 
         delay: index * 0.1,
-        boxShadow: isMatch ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }
+        scale: isLinked ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {},
+        boxShadow: (isMax || isLinked) ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }
       }}
-      className="relative w-20 h-20 group rounded-2xl" // Wrapper de positionnement
+      className="relative w-20 h-20 group rounded-2xl"
     >
-
       {/* Le Dé (Conteneur visuel) */}
       <div className={clsx(
         "relative w-full h-full flex flex-col items-center justify-center rounded-2xl border-2 backdrop-blur-sm overflow-hidden transition-colors duration-500 z-10",
-        // Styles
-        isMatch 
+        isMax 
           ? "bg-yellow-950/80 text-yellow-100 border-yellow-400 shadow-[0_0_15px_rgba(255,215,0,0.5)]" 
-          : clsx(
-              "shadow-lg",
-              themeColor === 'text-orange-500' ? "border-orange-500/50 bg-orange-950/40 text-orange-200" :
-              themeColor === 'text-cyan-400' ? "border-cyan-500/50 bg-cyan-950/40 text-cyan-200" :
-              themeColor === 'text-emerald-400' ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200" :
-              themeColor === 'text-fuchsia-400' ? "border-fuchsia-500/50 bg-fuchsia-950/40 text-fuchsia-200" :
-              "border-indigo-500/50 bg-indigo-950/40 text-indigo-200"
-            )
+          : isLinked
+            ? "bg-violet-950/80 text-violet-100 border-violet-400 shadow-[inset_0_0_20px_rgba(139,92,246,0.3)]"
+            : clsx(
+                "shadow-lg",
+                themeColor === 'text-orange-500' ? "border-orange-500/50 bg-orange-950/40 text-orange-200" :
+                themeColor === 'text-cyan-400' ? "border-cyan-500/50 bg-cyan-950/40 text-cyan-200" :
+                themeColor === 'text-emerald-400' ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200" :
+                themeColor === 'text-fuchsia-400' ? "border-fuchsia-500/50 bg-fuchsia-950/40 text-fuchsia-200" :
+                "border-indigo-500/50 bg-indigo-950/40 text-indigo-200"
+              )
       )}>
-        {/* Shine Effect interne pour Match */}
-        {isMatch && (
+        {/* Shine Effect pour Max */}
+        {isMax && (
           <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 via-transparent to-yellow-200/20"></div>
+        )}
+        
+        {/* Shine Effect pour Linked */}
+        {isLinked && !isMax && (
+          <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/30 via-transparent to-violet-200/20 animate-pulse"></div>
         )}
 
         {/* Glow interne au survol */}
         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity"></div>
         
         {/* Valeur */}
-        <span className={clsx("text-4xl font-bold font-serif leading-none mt-1", isMatch && "drop-shadow-[0_0_5px_rgba(255,215,0,0.8)]")}>{value}</span>
+        <span className={clsx(
+          "text-4xl font-bold font-serif leading-none mt-1", 
+          isMax && "drop-shadow-[0_0_5px_rgba(255,215,0,0.8)]",
+          isLinked && !isMax && "drop-shadow-[0_0_8px_rgba(139,92,246,0.8)]"
+        )}>{value}</span>
         
         {/* Label */}
         <span className="text-[10px] opacity-50 font-mono leading-none mt-1">D{faces}</span>
@@ -116,13 +198,170 @@ const AnimatedDie = ({ value, faces, index, themeColor, isMatch }: { value: numb
   );
 };
 
+// --- COMPOSANT WRAPPER POUR DÉS (SANS LIGNES, AVEC RÉSONANCE) ---
+const DiceWithLinks = ({ rolls, faces, themeColor, showLinks }: { 
+  rolls: number[], 
+  faces: number, 
+  themeColor: string,
+  showLinks: boolean 
+}) => {
+  // Trouver les indices des dés liés (même valeur apparaît 2+ fois, par PAIRES)
+  const linkedIndices = new Set<number>();
+  
+  if (showLinks) {
+    const valueIndices: Record<number, number[]> = {};
+    rolls.forEach((val, idx) => {
+      if (!valueIndices[val]) valueIndices[val] = [];
+      valueIndices[val].push(idx);
+    });
+    
+    Object.values(valueIndices).forEach(indices => {
+      // Pour chaque valeur, on prend les paires (0,1), (2,3), etc.
+      // Si on a 3 dés (0,1,2), on prend seulement 0 et 1.
+      for (let i = 0; i < indices.length - 1; i += 2) {
+        linkedIndices.add(indices[i]);
+        linkedIndices.add(indices[i + 1]);
+      }
+    });
+  }
+  
+  return (
+    <div className="flex flex-wrap justify-center gap-4 overflow-visible py-4">
+      {rolls.map((val, idx) => {
+        const isMax = val === faces;
+        const isLinked = linkedIndices.has(idx);
+        return (
+          <div key={idx} className="relative z-10 overflow-visible">
+            <AnimatedDie 
+              value={val} 
+              faces={faces} 
+              index={idx} 
+              themeColor={themeColor} 
+              isMax={isMax}
+              isLinked={isLinked}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export function SpellDetail({ spell, onClose }: SpellDetailProps) {
   const { prepareSpell, unprepareSpell, castSpell, character, addEffect, removeEffect, setFreeCastSpell, consumeFreeCast } = useCharacter();
   
   // États locaux
-  const [rollState, setRollState] = useState<'idle' | 'rolling' | 'result'>('idle');
+  const [rollState, setRollState] = useState<'idle' | 'rolling' | 'attack' | 'damage' | 'result'>('idle');
   const [result, setResult] = useState<RollResult | null>(null);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  
+  // État pour upcast (surcharge)
+  const [selectedLevel, setSelectedLevel] = useState(spell.level);
+  const canUpcast = spell.level > 0 && spell.higherLevels;
+  const upcastLevels = selectedLevel - spell.level;
+  
+  // Calculer les emplacements disponibles pour l'upcast
+  const availableUpcastLevels = character.slots
+    .filter(s => s.level >= spell.level && s.used < s.max)
+    .map(s => s.level);
+  
+  // États pour attaques multiples
+  const [currentAttackIndex, setCurrentAttackIndex] = useState(0);
+  const [currentAttackRoll, setCurrentAttackRoll] = useState<{ roll: number; total: number; isCrit: boolean; isFumble: boolean } | null>(null);
+  const [attackResults, setAttackResults] = useState<Array<{ attackRoll: number; attackTotal: number; isCrit: boolean; isFumble: boolean; damageRolls: number[]; damageTotal: number; skipped: boolean; isBounce?: boolean }>>([]);
+  
+  // État pour rebond (Orbe chromatique)
+  const [hasBounce, setHasBounce] = useState(false);
+  const [bounceCount, setBounceCount] = useState(0);
+  
+  // Calculs d'attaque
+  const attackBonus = character.proficiencyBonus + Math.floor((character.abilities.INT - 10) / 2);
+  
+  // Calcul du scaling des cantrips basé sur le niveau du personnage
+  const getCantripScaling = () => {
+    if (spell.level !== 0 || !spell.damage || !spell.higherLevels) return 1;
+    
+    const charLevel = character.level || 1;
+    if (charLevel >= 17) return 4;
+    if (charLevel >= 11) return 3;
+    if (charLevel >= 5) return 2;
+    return 1;
+  };
+  const cantripMultiplier = getCantripScaling();
+
+  // Calcul du nombre d'attaques avec upcast (Rayon ardent: +1 rayon par niveau)
+  const getAttackCount = () => {
+    const baseCount = spell.attackRoll?.count || 0;
+    if (spell.id === 'scorching-ray' && upcastLevels > 0) {
+      return baseCount + upcastLevels;
+    }
+    return baseCount;
+  };
+  const attackCount = getAttackCount();
+  const hasAttackRoll = attackCount > 0;
+  const canBounce = spell.canBounce || false;
+  
+  // Calcul des dés de dégâts avec upcast ET scaling cantrip
+  const getUpcastDice = () => {
+    if (!spell.damage) return spell.damage?.dice || '';
+    const baseDice = spell.damage.dice;
+    
+    // Scaling des cantrips (niveau 0)
+    if (spell.level === 0 && spell.higherLevels && cantripMultiplier > 1) {
+      const match = baseDice.match(/(\d+)D(\d+)/i);
+      if (match) {
+        return `${cantripMultiplier}D${match[2]}`;
+      }
+    }
+    
+    // Magic Missile: +1 projectile par niveau (3x devient 4x, 5x, etc.)
+    if (spell.id === 'magic-missile' && upcastLevels > 0) {
+      const projectiles = 3 + upcastLevels;
+      return `${projectiles}x(1D4+1)`;
+    }
+    
+    // Vague tonnante, Orbe chromatique: +1D8 par niveau
+    if ((spell.id === 'thunderwave' || spell.id === 'chromatic-orb') && upcastLevels > 0) {
+      const match = baseDice.match(/(\d+)D(\d+)/i);
+      if (match) {
+        const newCount = parseInt(match[1]) + upcastLevels;
+        return `${newCount}D${match[2]}`;
+      }
+    }
+    
+    // Rayon ardent: les dés restent 2D6 mais plus de rayons (géré dans attackCount)
+    return baseDice;
+  };
+  const upcastDice = getUpcastDice();
+  
+  // Affichage des dés pour l'interface (plus lisible)
+  const getUpcastDisplayDice = () => {
+    // Scaling des cantrips
+    if (spell.level === 0 && spell.higherLevels && cantripMultiplier > 1) {
+      const match = spell.damage?.dice.match(/(\d+)D(\d+)/i);
+      if (match) {
+        return `${cantripMultiplier}D${match[2]}`;
+      }
+    }
+    
+    // Magic Missile
+    if (spell.id === 'magic-missile' && upcastLevels > 0) {
+      const projectiles = 3 + upcastLevels;
+      return `${projectiles}×(1D4+1)`;
+    }
+    
+    // Rayon ardent: afficher le nouveau nombre de rayons
+    if (spell.id === 'scorching-ray' && upcastLevels > 0) {
+      const rays = 3 + upcastLevels;
+      return `${rays}×2D6`;
+    }
+    
+    // Autres sorts: afficher les dés upcastés
+    return upcastDice.toUpperCase();
+  };
+  
+  // Vérifier si le cantrip a été amélioré par le niveau
+  const isCantripScaled = spell.level === 0 && spell.higherLevels && cantripMultiplier > 1;
 
   // Hooks & Logic
   const isPrepared = character.preparedSpells.includes(spell.id);
@@ -268,6 +507,10 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
   };
 
   const handleCast = () => {
+    // Vérifier qu'on a un emplacement au niveau sélectionné
+    const selectedSlot = character.slots.find(s => s.level === selectedLevel);
+    const hasSelectedSlot = selectedSlot && selectedSlot.used < selectedSlot.max;
+    
     // Cas 1 : Sort à effet durable (Buff/AC) -> Toggle
     if (hasBuffEffect) {
       if (isActiveEffect) {
@@ -278,8 +521,8 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
            if (isThisFreeCast) {
              consumeFreeCast();
            } else {
-             if (!hasSlotsAvailable) return;
-             castSpell(spell.level);
+             if (!hasSelectedSlot) return;
+             castSpell(selectedLevel); // Utilise le niveau sélectionné
            }
         }
         
@@ -303,21 +546,42 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
 
     // Cas 2 : Sort de Dégâts -> Animation
     if (spell.damage) {
-      if (!hasSlotsAvailable && spell.level > 0) return;
+      if (!hasSelectedSlot && spell.level > 0 && !isThisFreeCast) return;
       
       if (spell.level > 0) {
         if (isThisFreeCast) consumeFreeCast();
-        else castSpell(spell.level);
+        else castSpell(selectedLevel); // Utilise le niveau sélectionné
       }
 
-      setRollState('rolling');
+      // Reset les états d'attaque
+      setCurrentAttackIndex(0);
+      setCurrentAttackRoll(null);
+      setAttackResults([]);
       setResult(null);
 
-      setTimeout(() => {
-        const rollData = parseAndRoll(spell.damage!.dice);
-        setResult(rollData);
-        setRollState('result');
-      }, 600); 
+      // Si le sort a un jet d'attaque, on commence par l'attaque
+      if (hasAttackRoll) {
+        setRollState('rolling');
+        setTimeout(() => {
+          const roll = Math.floor(Math.random() * 20) + 1;
+          const total = roll + attackBonus;
+          setCurrentAttackRoll({
+            roll,
+            total,
+            isCrit: roll === 20,
+            isFumble: roll === 1
+          });
+          setRollState('attack');
+        }, 600);
+      } else {
+        // Sort sans jet d'attaque (Magic Missile, etc.)
+        setRollState('rolling');
+        setTimeout(() => {
+          const rollData = parseAndRoll(upcastDice);
+          setResult(rollData);
+          setRollState('result');
+        }, 600);
+      }
 
     } else {
       // Utilitaire
@@ -331,14 +595,142 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
     }
   };
 
+  // Doubler les dés pour un critique (2D6 -> 4D6)
+  const doubleDice = (diceStr: string): string => {
+    return diceStr.replace(/(\d+)D(\d+)/gi, (_, count, faces) => {
+      return `${parseInt(count) * 2}D${faces}`;
+    });
+  };
+
+  // Lancer les dégâts pour l'attaque courante
+  const handleRollDamage = () => {
+    if (!currentAttackRoll) return;
+    
+    const isBounceRoll = bounceCount > 0;
+    
+    // Si critique, doubler le nombre de dés (utilise upcastDice pour les dégâts modifiés)
+    const diceToRoll = currentAttackRoll.isCrit 
+      ? doubleDice(upcastDice) 
+      : upcastDice;
+    
+    setRollState('rolling');
+    setTimeout(() => {
+      const damage = rollDamage(diceToRoll);
+      
+      // Détecter si paire pour rebond (sur les dés originaux, pas doublés)
+      const hasMatchingDice = canBounce && damage.rolls.some((val, _, arr) => arr.filter(v => v === val).length >= 2);
+      setHasBounce(hasMatchingDice);
+      
+      const newResult: typeof attackResults[0] = {
+        attackRoll: currentAttackRoll.roll,
+        attackTotal: currentAttackRoll.total,
+        isCrit: currentAttackRoll.isCrit,
+        isFumble: currentAttackRoll.isFumble,
+        damageRolls: damage.rolls,
+        damageTotal: damage.total,
+        skipped: false,
+        isBounce: isBounceRoll
+      };
+      
+      setAttackResults(prev => [...prev, newResult]);
+      setRollState('damage');
+      setResult({ total: damage.total, rolls: damage.rolls, faces: damage.faces, modifier: damage.modifier, isMultiHit: false });
+    }, 400);
+  };
+
+  // Passer l'attaque (raté ou choix)
+  const handleSkipDamage = () => {
+    if (!currentAttackRoll) return;
+    
+    const newResult: typeof attackResults[0] = {
+      attackRoll: currentAttackRoll.roll,
+      attackTotal: currentAttackRoll.total,
+      isCrit: currentAttackRoll.isCrit,
+      isFumble: currentAttackRoll.isFumble,
+      damageRolls: [],
+      damageTotal: 0,
+      skipped: true
+    };
+    
+    setAttackResults(prev => [...prev, newResult]);
+    handleNextAttack();
+  };
+
+  // Passer à l'attaque suivante ou terminer
+  const handleNextAttack = () => {
+    setHasBounce(false);
+    const nextIndex = currentAttackIndex + 1;
+    
+    if (nextIndex < attackCount) {
+      setCurrentAttackIndex(nextIndex);
+      setRollState('rolling');
+      setTimeout(() => {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        const total = roll + attackBonus;
+        setCurrentAttackRoll({
+          roll,
+          total,
+          isCrit: roll === 20,
+          isFumble: roll === 1
+        });
+        setRollState('attack');
+      }, 400);
+    } else {
+      // Toutes les attaques sont terminées, afficher le résultat final
+      const totalDamage = attackResults.reduce((sum, r) => sum + r.damageTotal, 0) + (result?.total || 0);
+      setResult(prev => prev ? { ...prev, total: totalDamage, attacks: undefined } : null);
+      setRollState('result');
+    }
+  };
+
+  // Gérer le rebond (Orbe chromatique)
+  const handleBounce = () => {
+    setBounceCount(prev => prev + 1);
+    setHasBounce(false);
+    setRollState('rolling');
+    setTimeout(() => {
+      const roll = Math.floor(Math.random() * 20) + 1;
+      const total = roll + attackBonus;
+      setCurrentAttackRoll({
+        roll,
+        total,
+        isCrit: roll === 20,
+        isFumble: roll === 1
+      });
+      setRollState('attack');
+    }, 400);
+  };
+
+  // Relancer tout depuis le début
   const handleReroll = () => {
-     setRollState('rolling');
-     setResult(null);
-     setTimeout(() => {
-        const rollData = parseAndRoll(spell.damage!.dice);
+    setCurrentAttackIndex(0);
+    setCurrentAttackRoll(null);
+    setAttackResults([]);
+    setResult(null);
+    setHasBounce(false);
+    setBounceCount(0);
+    
+    if (hasAttackRoll) {
+      setRollState('rolling');
+      setTimeout(() => {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        const total = roll + attackBonus;
+        setCurrentAttackRoll({
+          roll,
+          total,
+          isCrit: roll === 20,
+          isFumble: roll === 1
+        });
+        setRollState('attack');
+      }, 400);
+    } else {
+      setRollState('rolling');
+      setTimeout(() => {
+        const rollData = parseAndRoll(upcastDice);
         setResult(rollData);
         setRollState('result');
-      }, 400); // Plus rapide au reroll
+      }, 400);
+    }
   };
 
   return (
@@ -467,8 +859,23 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                              <span className="text-lg font-serif italic text-neutral-200 capitalize">{spell.damage.type}</span>
                           </div>
                        </div>
-                       <div className={clsx("text-4xl font-bold font-serif tabular-nums drop-shadow-lg pr-4 transition-colors duration-500 relative z-10", theme.accent.split(' ')[0])}>
-                         {spell.damage.dice}
+                       <div className="flex flex-col items-end gap-1 pr-4 relative z-10">
+                         {upcastLevels > 0 && (
+                           <span className="text-[10px] bg-violet-500/30 text-violet-300 px-2 py-0.5 rounded font-cinzel uppercase tracking-wider">
+                             Niveau {selectedLevel}
+                           </span>
+                         )}
+                         {isCantripScaled && (
+                           <span className="text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded font-cinzel uppercase tracking-wider">
+                             Niv. {character.level || 1}
+                           </span>
+                         )}
+                         <span className={clsx(
+                           "text-3xl font-bold font-serif tabular-nums drop-shadow-lg transition-colors duration-500", 
+                           isThisFreeCast ? "text-amber-400" : isCantripScaled ? "text-amber-400" : upcastLevels > 0 ? "text-violet-400" : theme.accent.split(' ')[0]
+                         )}>
+                           {isCantripScaled || upcastLevels > 0 ? getUpcastDisplayDice() : (spell.damage.displayDice || spell.damage.dice)}
+                         </span>
                        </div>
                     </div>
                   </div>
@@ -558,79 +965,357 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
               </motion.div>
             )}
 
-            {/* ETAT 3: Résultat */}
-            {rollState === 'result' && result && (
+            {/* ETAT 3: Jet d'attaque */}
+            {rollState === 'attack' && currentAttackRoll && (
+              <motion.div
+                key="attack"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                className="flex flex-col items-center justify-center min-h-[300px] w-full px-4"
+              >
+                {/* Indicateur d'attaque ou rebond */}
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={clsx(
+                    "mb-4 text-xs uppercase tracking-widest font-cinzel",
+                    bounceCount > 0 ? "text-amber-400" : "text-neutral-500"
+                  )}
+                >
+                  {bounceCount > 0 
+                    ? `Rebond ${bounceCount} !`
+                    : attackCount > 1 
+                      ? `Attaque ${currentAttackIndex + 1} / ${attackCount}`
+                      : "Jet d'Attaque"
+                  }
+                </motion.div>
+
+                {/* Résultat du D20 */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className={clsx(
+                    "w-28 h-28 rounded-2xl flex items-center justify-center font-cinzel text-5xl font-bold border-4 mb-4",
+                    currentAttackRoll.isCrit ? "bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.5)]" :
+                    currentAttackRoll.isFumble ? "bg-red-500/20 border-red-500 text-red-300 shadow-[0_0_30px_rgba(239,68,68,0.5)]" :
+                    "bg-blue-500/10 border-blue-500/50 text-blue-300"
+                  )}
+                >
+                  {currentAttackRoll.roll}
+                </motion.div>
+                <span className="text-sm text-neutral-600 mb-6">D20</span>
+
+                {/* Calcul du total */}
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-2xl font-bold text-neutral-400">{currentAttackRoll.roll}</span>
+                  <span className="text-neutral-600">+</span>
+                  <span className="text-xl text-neutral-500">{attackBonus}</span>
+                  <span className="text-neutral-600">=</span>
+                  <span className={clsx(
+                    "text-3xl font-cinzel font-bold",
+                    currentAttackRoll.isCrit ? "text-amber-400" :
+                    currentAttackRoll.isFumble ? "text-red-400" :
+                    "text-white"
+                  )}>
+                    {currentAttackRoll.total}
+                  </span>
+                </div>
+
+                {/* Badge critique/fumble */}
+                {currentAttackRoll.isCrit && (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ repeat: Infinity, duration: 1 }}
+                    className="mb-6 px-4 py-2 bg-amber-500/20 border border-amber-400 rounded-full text-amber-300 font-cinzel font-bold uppercase tracking-widest text-sm"
+                  >
+                    Critique ! Dés doublés
+                  </motion.div>
+                )}
+                {currentAttackRoll.isFumble && (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="mb-6 px-4 py-2 bg-red-500/20 border border-red-500 rounded-full text-red-300 font-cinzel font-bold uppercase tracking-widest text-sm"
+                  >
+                    Échec Critique
+                  </motion.div>
+                )}
+
+                {/* Boutons d'action */}
+                <div className="flex flex-col gap-3 mt-6 w-full max-w-xs">
+                  <motion.button 
+                    onClick={handleRollDamage}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={clsx(
+                      "relative overflow-hidden py-4 rounded-lg font-cinzel uppercase tracking-[0.2em] text-sm transition-all",
+                      "border backdrop-blur-sm",
+                      currentAttackRoll.isCrit 
+                        ? "border-amber-500/50 text-amber-200 bg-amber-500/10" 
+                        : "border-white/20 text-white bg-white/5"
+                    )}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      <Dices size={18} />
+                      Lancer les Dégâts
+                    </span>
+                    <div className={clsx(
+                      "absolute inset-0 opacity-0 hover:opacity-100 transition-opacity",
+                      currentAttackRoll.isCrit 
+                        ? "bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20"
+                        : "bg-gradient-to-r from-white/10 via-white/5 to-white/10"
+                    )} />
+                  </motion.button>
+                  <button 
+                    onClick={handleSkipDamage}
+                    className="py-3 text-neutral-500 hover:text-neutral-300 font-cinzel uppercase tracking-[0.15em] text-xs transition-colors"
+                  >
+                    Raté / Passer
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ETAT 4: Dégâts */}
+            {rollState === 'damage' && result && (
+              <motion.div
+                key="damage"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                className="flex flex-col items-center justify-center min-h-[300px] w-full px-4"
+              >
+                {/* Indicateur d'attaque ou rebond */}
+                <div className={clsx(
+                  "mb-4 text-xs uppercase tracking-widest font-cinzel",
+                  bounceCount > 0 ? "text-amber-400" : "text-neutral-500"
+                )}>
+                  {bounceCount > 0 
+                    ? `Rebond ${bounceCount} !`
+                    : attackCount > 1 
+                      ? `Attaque ${currentAttackIndex + 1} / ${attackCount}`
+                      : ""
+                  }
+                </div>
+
+                {/* Dés de dégâts avec lignes de liaison */}
+                <div className="mb-6">
+                  <DiceWithLinks 
+                    rolls={result.rolls}
+                    faces={result.faces}
+                    themeColor={theme.accent.split(' ')[0]}
+                    showLinks={canBounce}
+                  />
+                </div>
+
+                {/* Total dégâts */}
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, type: "spring" }}
+                  className="text-center relative mb-8"
+                >
+                  <div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 opacity-50 pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.6), rgba(${theme.glowRgb}, 0) 70%)`,
+                      filter: "blur(30px)",
+                    }}
+                  />
+                  <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">
+                    Dégâts{attackResults.length > 0 && attackResults[attackResults.length - 1]?.isCrit ? " (crit)" : ""}
+                  </span>
+                  <span className={clsx("text-7xl font-cinzel font-bold drop-shadow-2xl", theme.accent.split(' ')[0])}>
+                    {result.total}
+                  </span>
+                </motion.div>
+
+                {/* Boutons : Rebond si paire, sinon suivant/terminer */}
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                  {hasBounce ? (
+                    <>
+                      <motion.button 
+                        onClick={handleBounce}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="relative overflow-hidden py-4 rounded-lg font-cinzel uppercase tracking-[0.2em] text-sm border border-amber-500/50 text-amber-200 bg-amber-500/10 backdrop-blur-sm"
+                      >
+                        <motion.div 
+                          className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-400/20 to-amber-500/0"
+                          animate={{ x: ['-100%', '100%'] }}
+                          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        />
+                        <span className="relative z-10 flex items-center justify-center gap-3">
+                          <Sparkles size={18} />
+                          Rebond ! Nouvelle cible
+                        </span>
+                      </motion.button>
+                      <button 
+                        onClick={handleNextAttack}
+                        className="py-3 text-neutral-500 hover:text-neutral-300 font-cinzel uppercase tracking-[0.15em] text-xs transition-colors"
+                      >
+                        Terminer
+                      </button>
+                    </>
+                  ) : (
+                    <motion.button 
+                      onClick={handleNextAttack}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="relative overflow-hidden py-4 rounded-lg font-cinzel uppercase tracking-[0.2em] text-sm border border-white/20 text-white bg-white/5 backdrop-blur-sm"
+                    >
+                      <span className="relative z-10">
+                        {currentAttackIndex + 1 < attackCount ? "Attaque Suivante" : "Voir le Total"}
+                      </span>
+                      <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity bg-gradient-to-r from-white/10 via-white/5 to-white/10" />
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ETAT 5: Résultat Final */}
+            {rollState === 'result' && (
               <motion.div
                 key="result"
-                className="flex flex-col items-center justify-center min-h-[300px]"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center min-h-[300px] w-full px-4"
               >
-                 {/* 1. Affichage des Dés Individuels */}
-                 <div className="flex flex-wrap justify-center gap-6 mb-8 px-4">
-                    {result.rolls.map((val, idx) => {
-                      // Détection de paires/triplets
-                      const isMatch = result.rolls.filter(v => v === val).length >= 2;
+                {/* Récap des attaques si multiples */}
+                {attackResults.length > 0 && (
+                  <div className="w-full space-y-2 mb-6">
+                    {attackResults.map((atk, idx) => {
+                      // Compter les rebonds avant cet index
+                      const bouncesBefore = attackResults.slice(0, idx).filter(a => a.isBounce).length;
+                      const isThisBounce = atk.isBounce;
+                      const attackNumber = idx + 1 - bouncesBefore;
                       
                       return (
-                        <AnimatedDie 
-                          key={idx} 
-                          value={val} 
-                          faces={result.faces} 
-                          index={idx} 
-                          themeColor={theme.accent.split(' ')[0]} 
-                          isMatch={isMatch}
-                        />
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className={clsx(
+                            "flex items-center justify-between p-3 rounded-lg border text-sm relative overflow-hidden",
+                            atk.skipped ? "bg-neutral-900/50 border-neutral-800 text-neutral-600" :
+                            isThisBounce ? "bg-amber-950/20 border-amber-500/30" :
+                            atk.isCrit ? "bg-amber-950/30 border-amber-500/50" :
+                            "bg-white/5 border-white/10"
+                          )}
+                        >
+                          {/* Badge Critique brillant */}
+                          {atk.isCrit && !atk.skipped && (
+                            <motion.div
+                              className="absolute top-0 right-0 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-[9px] font-bold text-amber-950 uppercase tracking-wider rounded-bl-lg"
+                              animate={{ 
+                                boxShadow: ["0 0 5px rgba(251,191,36,0.5)", "0 0 15px rgba(251,191,36,0.8)", "0 0 5px rgba(251,191,36,0.5)"]
+                              }}
+                              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                              Critique
+                            </motion.div>
+                          )}
+                          
+                          <span className={clsx(
+                            "font-cinzel text-xs uppercase tracking-widest",
+                            isThisBounce && "text-amber-400"
+                          )}>
+                            {isThisBounce ? `Rebond ${bouncesBefore + 1}` : `Attaque ${attackNumber}`}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className={clsx(
+                              "text-xs",
+                              atk.isCrit ? "text-amber-400" : atk.isFumble ? "text-red-400" : "text-blue-300"
+                            )}>
+                              D20: {atk.attackRoll} → {atk.attackTotal}
+                            </span>
+                            {!atk.skipped ? (
+                              <span className={clsx("font-bold", atk.isCrit ? "text-amber-300" : theme.accent.split(' ')[0])}>
+                                {atk.damageTotal} dégâts
+                              </span>
+                            ) : (
+                              <span className="text-neutral-600 italic">Raté</span>
+                            )}
+                          </div>
+                        </motion.div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Affichage des dés pour sorts sans attaque */}
+                {attackResults.length === 0 && result && (
+                  <div className="mb-8 px-4 flex flex-col items-center gap-4">
+                    <DiceWithLinks 
+                      rolls={result.rolls}
+                      faces={result.faces}
+                      themeColor={theme.accent.split(' ')[0]}
+                      showLinks={canBounce}
+                    />
                     {result.modifier > 0 && (
                       <motion.div 
-                        initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-                        className="flex items-center justify-center w-16 h-16 rounded-full bg-white/5 border border-white/10 text-neutral-400 font-serif text-2xl"
+                        initial={{ opacity: 0, y: 10 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        transition={{ delay: 0.5 }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-800/60 border border-neutral-600/40"
                       >
-                        +{result.modifier}
+                        <span className="text-neutral-500 text-xs font-cinzel uppercase tracking-wider">Bonus</span>
+                        <span className="text-neutral-300 font-bold text-lg font-cinzel">+{result.modifier}</span>
                       </motion.div>
                     )}
-                 </div>
+                  </div>
+                )}
 
-                 {/* 2. Total */}
-                 <motion.div
-                   initial={{ scale: 0.5, opacity: 0 }}
-                   animate={{ scale: 1, opacity: 1 }}
-                   transition={{ delay: 0.2 + (result.rolls.length * 0.1), type: "spring" }}
-                   className="text-center relative"
-                 >
-                    <div
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 opacity-60 pointer-events-none"
-                      style={{
-                        background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.7), rgba(${theme.glowRgb}, 0) 72%)`,
-                        filter: "blur(38px)",
-                        transform: "translateZ(0)",
-                        willChange: "transform, opacity"
-                      }}
-                    />
-                    <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">Total Dégâts</span>
-                    <span className={clsx("text-8xl font-cinzel font-bold drop-shadow-2xl", theme.accent.split(' ')[0])}>
-                      {result.total}
-                    </span>
-                 </motion.div>
+                {/* Total Final */}
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: attackResults.length * 0.1 + 0.2, type: "spring" }}
+                  className="text-center relative"
+                >
+                  <div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 opacity-60 pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.7), rgba(${theme.glowRgb}, 0) 72%)`,
+                      filter: "blur(38px)",
+                      transform: "translateZ(0)",
+                    }}
+                  />
+                  <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">
+                    Total Dégâts
+                  </span>
+                  <span className={clsx("text-8xl font-cinzel font-bold drop-shadow-2xl", theme.accent.split(' ')[0])}>
+                    {attackResults.length > 0 
+                      ? attackResults.reduce((sum, a) => sum + a.damageTotal, 0)
+                      : result?.total || 0
+                    }
+                  </span>
+                </motion.div>
 
-                 {/* 3. Actions */}
-                 <motion.div 
-                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-                   className="mt-12 flex gap-4"
-                 >
-                    <button 
-                       onClick={handleReroll}
-                       className="px-6 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 text-xs uppercase tracking-widest transition-colors flex items-center gap-2"
-                    >
-                      <RefreshCw size={14} /> Relancer
-                    </button>
-                    <button 
-                       onClick={() => setRollState('idle')}
-                       className="px-6 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 text-xs uppercase tracking-widest transition-colors"
-                    >
-                      Retour
-                    </button>
-                 </motion.div>
+                {/* Actions */}
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+                  className="mt-12 flex gap-6"
+                >
+                  <button 
+                    onClick={handleReroll}
+                    className="group flex items-center gap-2 text-neutral-500 hover:text-neutral-200 transition-colors"
+                  >
+                    <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                    <span className="font-cinzel uppercase tracking-[0.15em] text-xs">Relancer</span>
+                  </button>
+                  <button 
+                    onClick={() => setRollState('idle')}
+                    className="text-neutral-500 hover:text-neutral-200 font-cinzel uppercase tracking-[0.15em] text-xs transition-colors"
+                  >
+                    Retour
+                  </button>
+                </motion.div>
               </motion.div>
             )}
 
@@ -641,8 +1326,47 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
         {rollState === 'idle' && (
           <motion.div 
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            className="p-4 bg-[#080808]/95 backdrop-blur border-t border-white/10 flex flex-col gap-3"
+            className="p-4 bg-[#080808] rounded-b-xl border-t border-white/10 flex flex-col gap-3"
           >
+            {/* Sélecteur d'Upcast */}
+            {canUpcast && effectivePrepared && availableUpcastLevels.length > 1 && (
+              <div className="pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-neutral-500 font-cinzel uppercase tracking-[0.2em]">Surcharge</span>
+                  {selectedLevel > spell.level && (
+                    <span className="text-[10px] text-violet-400 font-cinzel">+{upcastLevels} niveau{upcastLevels > 1 ? 'x' : ''}</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {availableUpcastLevels.map(level => {
+                    const slot = character.slots.find(s => s.level === level);
+                    const remaining = slot ? slot.max - slot.used : 0;
+                    const isSelected = selectedLevel === level;
+                    const isUpcast = level > spell.level;
+                    
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => setSelectedLevel(level)}
+                        className={clsx(
+                          "flex-1 py-3 rounded-lg font-cinzel transition-all flex flex-col items-center justify-center gap-0.5",
+                          isSelected 
+                            ? isUpcast
+                              ? "bg-violet-500/20 border-2 border-violet-400 text-violet-300"
+                              : "bg-white/10 border-2 border-white/30 text-white"
+                            : "bg-white/5 border border-white/10 text-neutral-500 hover:bg-white/10 hover:text-neutral-300"
+                        )}
+                      >
+                        <span className="text-xs text-neutral-500">Niv.</span>
+                        <span className="font-bold text-xl leading-none">{level}</span>
+                        <span className="text-[10px] opacity-50">{remaining} dispo</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             {effectivePrepared ? (
               <>
                 {/* Mode GRATUIT DISPONIBLE : [Gratuit] [Oublier] puis [Invoquer] */}

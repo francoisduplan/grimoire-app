@@ -28,7 +28,13 @@ export interface Spell {
   damage?: {
     dice: string; // e.g., "8d6"
     type: string; // e.g., "Feu"
+    perAttack?: boolean; // true si les dégâts sont par attaque (ex: Rayon ardent 2D6 par rayon)
+    displayDice?: string; // Affichage custom (ex: "3x 2D6")
   };
+  attackRoll?: {
+    count: number; // Nombre d'attaques (1 pour orbe chromatique, 3 pour rayon ardent)
+  };
+  canBounce?: boolean; // Si true, rebondit sur paire de dés (Orbe chromatique)
   effect?: {
     value: string; // e.g., "+5"
     label: string; // e.g., "Classe d'Armure"

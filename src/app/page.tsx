@@ -342,7 +342,7 @@ export default function Home() {
                );
             })()}
             
-            <span className="text-[9px] uppercase tracking-widest text-blue-400 font-bold transition-colors">Armure</span>
+            <span className="text-[9px] uppercase tracking-widest text-blue-400 font-bold transition-colors">CA</span>
           </div>
 
           {/* Degré de Difficulté */}
