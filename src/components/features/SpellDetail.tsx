@@ -953,8 +953,10 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
         {/* --- BODY --- */}
         <div 
           className={clsx(
-            "flex-1 px-8 pb-8 relative overflow-y-auto",
-            rollState === 'rolling' && "min-h-[350px]"
+            "flex-1 px-8 pb-8 relative",
+            rollState === 'rolling' 
+              ? "overflow-hidden min-h-[350px]" 
+              : "overflow-y-auto"
           )}
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
         >
