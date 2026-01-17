@@ -1243,11 +1243,14 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                   transition={{ delay: 0.3, type: "spring" }}
                   className="text-center relative mb-8"
                 >
-                  <div
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 opacity-50 pointer-events-none"
+                  <motion.div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 pointer-events-none"
+                    animate={{ opacity: [0.4, 0.6, 0.4] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     style={{
                       background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.6), rgba(${theme.glowRgb}, 0) 70%)`,
                       filter: "blur(30px)",
+                      willChange: "opacity",
                     }}
                   />
                   <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">
@@ -1417,12 +1420,14 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                   transition={{ delay: attackResults.length * 0.1 + 0.2, type: "spring" }}
                   className="text-center relative"
                 >
-                  <div
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 opacity-60 pointer-events-none"
+                  <motion.div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 pointer-events-none"
+                    animate={{ opacity: [0.5, 0.7, 0.5] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     style={{
                       background: `radial-gradient(circle at center, rgba(${theme.glowRgb}, 0.7), rgba(${theme.glowRgb}, 0) 72%)`,
                       filter: "blur(38px)",
-                      transform: "translateZ(0)",
+                      willChange: "opacity",
                     }}
                   />
                   <span className="text-xs font-cinzel text-neutral-500 uppercase tracking-widest block mb-1">
