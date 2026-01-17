@@ -876,7 +876,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       
         <motion.div 
         className={clsx(
-          "relative w-full max-w-md bg-[#080808] rounded-xl shadow-2xl border transition-colors duration-700 flex flex-col max-h-[85vh] z-10 my-auto overflow-hidden",
+          "relative w-full max-w-md bg-[#080808] rounded-xl shadow-2xl border transition-colors duration-700 flex flex-col max-h-[90vh] z-10 my-auto overflow-hidden",
           isThisFreeCast 
             ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]" 
             : justUnlocked 
@@ -954,7 +954,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
         <div 
           className={clsx(
             "flex-1 px-8 pb-8 relative",
-            rollState === 'rolling' ? "overflow-hidden" : "overflow-y-auto"
+            rollState === 'idle' ? "overflow-y-auto" : "overflow-hidden min-h-[350px]"
           )}
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
         >
