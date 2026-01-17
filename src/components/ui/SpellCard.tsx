@@ -46,7 +46,7 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
   const isRituel = spell.ritual;
   const isDon = ['Don', 'Aptitude', 'Chronomancie'].includes(spell.school);
 
-  // Configuration visuelle selon l'école ou le type de dégâts
+  // Configuration visuelle selon le type de dégâts OU l'école
   const getTheme = () => {
     // 1. SI GRATUIT : Thème OR Forcé
     if (isFreeCast) return {
@@ -57,6 +57,7 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
       glow: 'shadow-amber-500/20'
     };
 
+    // 2. Dons / Aptitudes / Chronomancie → Or
     if (isDon) return {
       color: 'text-amber-400',
       bg: 'from-amber-950/40 to-black',
@@ -64,47 +65,109 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
       icon: Star,
       glow: 'shadow-amber-500/10'
     };
+
+    // 3. Par TYPE DE DÉGÂTS (priorité)
     if (spell.damage?.type === 'Feu') return { 
-      color: 'text-orange-500', 
-      bg: 'from-orange-900/40 to-black', 
-      border: 'border-orange-900/50',
+      color: 'text-orange-400', 
+      bg: 'from-orange-950/50 to-black', 
+      border: 'border-orange-500/40',
       icon: Flame,
-      glow: 'shadow-orange-900/20'
+      glow: 'shadow-orange-500/20'
     };
+    if (spell.damage?.type === 'Tonnerre') return { 
+      color: 'text-sky-400', 
+      bg: 'from-sky-950/50 to-black', 
+      border: 'border-sky-500/40',
+      icon: Zap,
+      glow: 'shadow-sky-500/20'
+    };
+    if (spell.damage?.type === 'Force') return { 
+      color: 'text-fuchsia-400', 
+      bg: 'from-fuchsia-950/50 to-black', 
+      border: 'border-fuchsia-500/40',
+      icon: Sparkles,
+      glow: 'shadow-fuchsia-500/20'
+    };
+    if (spell.damage?.type === 'Froid') return { 
+      color: 'text-cyan-300', 
+      bg: 'from-cyan-950/50 to-black', 
+      border: 'border-cyan-400/40',
+      icon: Sparkles,
+      glow: 'shadow-cyan-400/20'
+    };
+    if (spell.damage?.type === 'Variable') return { 
+      color: 'text-violet-400', 
+      bg: 'from-violet-950/50 to-black', 
+      border: 'border-violet-500/40',
+      icon: Sparkles,
+      glow: 'shadow-violet-500/20'
+    };
+
+    // 4. Par ÉCOLE (sorts utilitaires)
     if (spell.school === 'Abjuration') return { 
       color: 'text-blue-400', 
-      bg: 'from-blue-900/40 to-black', 
-      border: 'border-blue-900/50',
+      bg: 'from-blue-950/50 to-black', 
+      border: 'border-blue-500/40',
       icon: Shield,
-      glow: 'shadow-blue-900/20'
-    };
-    if (spell.school === 'Nécromancie') return { 
-      color: 'text-green-500', 
-      bg: 'from-green-900/40 to-black', 
-      border: 'border-green-900/50',
-      icon: Skull,
-      glow: 'shadow-green-900/20'
-    };
-     if (spell.damage?.type === 'Force') return { 
-      color: 'text-fuchsia-400', 
-      bg: 'from-fuchsia-900/40 to-black', 
-      border: 'border-fuchsia-900/50',
-      icon: Sparkles,
-      glow: 'shadow-fuchsia-900/20'
+      glow: 'shadow-blue-500/20'
     };
     if (spell.school === 'Divination') return {
       color: 'text-cyan-400',
-      bg: 'from-cyan-900/40 to-black',
-      border: 'border-cyan-900/50',
+      bg: 'from-cyan-950/50 to-black',
+      border: 'border-cyan-500/40',
       icon: Eye,
-      glow: 'shadow-cyan-900/20'
+      glow: 'shadow-cyan-500/20'
     };
+    if (spell.school === 'Illusion') return { 
+      color: 'text-purple-400', 
+      bg: 'from-purple-950/50 to-black', 
+      border: 'border-purple-500/40',
+      icon: Eye,
+      glow: 'shadow-purple-500/20'
+    };
+    if (spell.school === 'Nécromancie') return { 
+      color: 'text-emerald-400', 
+      bg: 'from-emerald-950/50 to-black', 
+      border: 'border-emerald-500/40',
+      icon: Skull,
+      glow: 'shadow-emerald-500/20'
+    };
+    if (spell.school === 'Conjuration') return { 
+      color: 'text-teal-400', 
+      bg: 'from-teal-950/50 to-black', 
+      border: 'border-teal-500/40',
+      icon: Sparkles,
+      glow: 'shadow-teal-500/20'
+    };
+    if (spell.school === 'Enchantement') return { 
+      color: 'text-pink-400', 
+      bg: 'from-pink-950/50 to-black', 
+      border: 'border-pink-500/40',
+      icon: Brain,
+      glow: 'shadow-pink-500/20'
+    };
+    if (spell.school === 'Transmutation') return { 
+      color: 'text-yellow-400', 
+      bg: 'from-yellow-950/50 to-black', 
+      border: 'border-yellow-500/40',
+      icon: Sparkles,
+      glow: 'shadow-yellow-500/20'
+    };
+    if (spell.school === 'Évocation') return { 
+      color: 'text-red-400', 
+      bg: 'from-red-950/50 to-black', 
+      border: 'border-red-500/40',
+      icon: Flame,
+      glow: 'shadow-red-500/20'
+    };
+
+    // Défaut → Violet
     return { 
       color: 'text-violet-400', 
-      bg: 'from-violet-900/40 to-black', 
-      border: 'border-violet-900/50',
-      icon: Zap,
-      glow: 'shadow-violet-900/20'
+      bg: 'from-violet-950/50 to-black', 
+      border: 'border-violet-500/40',
+      icon: Sparkles,
+      glow: 'shadow-violet-500/20'
     };
   };
 
@@ -117,8 +180,10 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
   const getDamageRange = () => {
     if (!spell.damage) return null;
     
+    // Utiliser displayDice si disponible, sinon dice
+    let diceStr = (spell.damage.displayDice || spell.damage.dice).toLowerCase();
+    
     // Pour les cantrips avec scaling, utiliser les dés modifiés
-    let diceStr = spell.damage.dice.toLowerCase();
     if (spell.level === 0 && spell.higherLevels && cantripMultiplier > 1) {
       const match = spell.damage.dice.match(/(\d+)D(\d+)/i);
       if (match) {
@@ -126,14 +191,25 @@ export function SpellCard({ spell, onClick, isPrepared = false, isKnown = false,
       }
     }
     
-    // Cas spécial Magic Missile: 3x(1D4+1) = 3 × (1+1) à 3 × (4+1) = 6~15
-    if (diceStr.includes('3x') && diceStr.includes('1d4+1')) {
-      return "6~15";
+    // Cas spécial Magic Missile: Nx(1D4+1) = N × (1+1) à N × (4+1)
+    const magicMissileMatch = diceStr.match(/(\d+)[x×]\(1d4\+1\)/);
+    if (magicMissileMatch) {
+      const projectiles = parseInt(magicMissileMatch[1]);
+      const min = projectiles * 2;  // N × (1+1)
+      const max = projectiles * 5;  // N × (4+1)
+      return `${min}~${max}`;
     }
     
-    // Cas Rayon ardent et autres "3x XDY": utiliser displayDice si présent
-    if (diceStr.includes('x')) {
-      return null; // On n'affiche pas de range pour les multi-attaques
+    // Cas multi-attaques comme Rayon ardent: "NxXDY" ou displayDice "3×2D6"
+    const multiAttackMatch = diceStr.match(/(\d+)[x×](\d+)d(\d+)/i);
+    if (multiAttackMatch) {
+      const attacks = parseInt(multiAttackMatch[1]);
+      const numDice = parseInt(multiAttackMatch[2]);
+      const dieSize = parseInt(multiAttackMatch[3]);
+      const totalDice = attacks * numDice;
+      const min = totalDice;           // Tous les 1
+      const max = totalDice * dieSize; // Tous au max
+      return `${min}~${max}`;
     }
     
     // Standard: "XDY" ou "XDY+Z"

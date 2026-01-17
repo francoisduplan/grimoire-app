@@ -303,7 +303,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
   
   // Calcul des dés de dégâts avec upcast ET scaling cantrip
   const getUpcastDice = () => {
-    if (!spell.damage) return spell.damage?.dice || '';
+    if (!spell.damage) return '';
     const baseDice = spell.damage.dice;
     
     // Scaling des cantrips (niveau 0)
@@ -412,7 +412,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       textGradient: 'from-amber-200 via-amber-400 to-yellow-500'
     };
 
-    // 2. Ensuite les buffs actifs
+    // 2. Buffs actifs → Cyan
     if (isActiveEffect) return {
       accent: 'text-cyan-400 border-cyan-400/50 shadow-cyan-400/40',
       glow: 'bg-cyan-400',
@@ -425,17 +425,41 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       textGradient: 'from-cyan-200 via-cyan-400 to-blue-500'
     };
 
-    // 3. Enfin le thème par défaut du sort
+    // 3. Dons / Aptitudes / Chronomancie → Or
+    if (['Aptitude', 'Don', 'Chronomancie'].includes(spell.school)) return {
+      accent: 'text-amber-400 border-amber-400/30 shadow-amber-400/20',
+      glow: 'bg-amber-400',
+      glowRgb: '251, 191, 36',
+      glowShadow: '0 0 10px rgba(251, 191, 36, 0.1)',
+      glowShadowHover: '0 0 15px rgba(251, 191, 36, 0.18)',
+      btnGradient: 'from-amber-600 to-yellow-900',
+      btnShadow: 'shadow-amber-900/40',
+      btnBorder: 'border-amber-500/40',
+      textGradient: 'from-amber-200 via-amber-400 to-yellow-500'
+    };
+
+    // 4. Par TYPE DE DÉGÂTS (priorité)
     if (spell.damage?.type === 'Feu') return {
-      accent: 'text-orange-500 border-orange-500/30 shadow-orange-500/20',
-      glow: 'bg-orange-500',
-      glowRgb: '249, 115, 22',
-      glowShadow: '0 0 10px rgba(249, 115, 22, 0.1)',
-      glowShadowHover: '0 0 15px rgba(249, 115, 22, 0.18)',
+      accent: 'text-orange-400 border-orange-400/30 shadow-orange-400/20',
+      glow: 'bg-orange-400',
+      glowRgb: '251, 146, 60',
+      glowShadow: '0 0 10px rgba(251, 146, 60, 0.1)',
+      glowShadowHover: '0 0 15px rgba(251, 146, 60, 0.18)',
       btnGradient: 'from-orange-600 to-red-900',
       btnShadow: 'shadow-orange-900/40',
       btnBorder: 'border-orange-500/40',
       textGradient: 'from-orange-200 via-orange-400 to-red-500'
+    };
+    if (spell.damage?.type === 'Tonnerre') return {
+      accent: 'text-sky-400 border-sky-400/30 shadow-sky-400/20',
+      glow: 'bg-sky-400',
+      glowRgb: '56, 189, 248',
+      glowShadow: '0 0 10px rgba(56, 189, 248, 0.1)',
+      glowShadowHover: '0 0 15px rgba(56, 189, 248, 0.18)',
+      btnGradient: 'from-sky-600 to-blue-900',
+      btnShadow: 'shadow-sky-900/40',
+      btnBorder: 'border-sky-500/40',
+      textGradient: 'from-sky-200 via-sky-400 to-blue-500'
     };
     if (spell.damage?.type === 'Force') return {
       accent: 'text-fuchsia-400 border-fuchsia-400/30 shadow-fuchsia-400/20',
@@ -448,6 +472,63 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       btnBorder: 'border-fuchsia-500/40',
       textGradient: 'from-fuchsia-200 via-fuchsia-400 to-purple-500'
     };
+    if (spell.damage?.type === 'Froid') return {
+      accent: 'text-cyan-300 border-cyan-300/30 shadow-cyan-300/20',
+      glow: 'bg-cyan-300',
+      glowRgb: '103, 232, 249',
+      glowShadow: '0 0 10px rgba(103, 232, 249, 0.1)',
+      glowShadowHover: '0 0 15px rgba(103, 232, 249, 0.18)',
+      btnGradient: 'from-cyan-600 to-blue-900',
+      btnShadow: 'shadow-cyan-900/40',
+      btnBorder: 'border-cyan-400/40',
+      textGradient: 'from-cyan-100 via-cyan-300 to-blue-400'
+    };
+    if (spell.damage?.type === 'Variable') return {
+      accent: 'text-violet-400 border-violet-400/30 shadow-violet-400/20',
+      glow: 'bg-violet-400',
+      glowRgb: '167, 139, 250',
+      glowShadow: '0 0 10px rgba(167, 139, 250, 0.1)',
+      glowShadowHover: '0 0 15px rgba(167, 139, 250, 0.18)',
+      btnGradient: 'from-violet-600 to-indigo-900',
+      btnShadow: 'shadow-violet-900/40',
+      btnBorder: 'border-violet-500/40',
+      textGradient: 'from-violet-200 via-violet-400 to-indigo-500'
+    };
+
+    // 5. Par ÉCOLE (sorts utilitaires)
+    if (spell.school === 'Abjuration') return {
+      accent: 'text-blue-400 border-blue-400/30 shadow-blue-400/20',
+      glow: 'bg-blue-400',
+      glowRgb: '96, 165, 250',
+      glowShadow: '0 0 10px rgba(96, 165, 250, 0.1)',
+      glowShadowHover: '0 0 15px rgba(96, 165, 250, 0.18)',
+      btnGradient: 'from-blue-600 to-blue-900',
+      btnShadow: 'shadow-blue-900/40',
+      btnBorder: 'border-blue-500/40',
+      textGradient: 'from-blue-200 via-blue-400 to-blue-600'
+    };
+    if (spell.school === 'Divination') return {
+      accent: 'text-cyan-400 border-cyan-400/30 shadow-cyan-400/20',
+      glow: 'bg-cyan-400',
+      glowRgb: '34, 211, 238',
+      glowShadow: '0 0 10px rgba(34, 211, 238, 0.1)',
+      glowShadowHover: '0 0 15px rgba(34, 211, 238, 0.18)',
+      btnGradient: 'from-cyan-600 to-teal-900',
+      btnShadow: 'shadow-cyan-900/40',
+      btnBorder: 'border-cyan-500/40',
+      textGradient: 'from-cyan-200 via-cyan-400 to-teal-500'
+    };
+    if (spell.school === 'Illusion') return {
+      accent: 'text-purple-400 border-purple-400/30 shadow-purple-400/20',
+      glow: 'bg-purple-400',
+      glowRgb: '192, 132, 252',
+      glowShadow: '0 0 10px rgba(192, 132, 252, 0.1)',
+      glowShadowHover: '0 0 15px rgba(192, 132, 252, 0.18)',
+      btnGradient: 'from-purple-600 to-purple-900',
+      btnShadow: 'shadow-purple-900/40',
+      btnBorder: 'border-purple-500/40',
+      textGradient: 'from-purple-200 via-purple-400 to-purple-600'
+    };
     if (spell.school === 'Nécromancie') return {
       accent: 'text-emerald-400 border-emerald-400/30 shadow-emerald-400/20',
       glow: 'bg-emerald-400',
@@ -459,28 +540,52 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       btnBorder: 'border-emerald-500/40',
       textGradient: 'from-emerald-200 via-emerald-400 to-green-500'
     };
-    if (spell.school === 'Abjuration') return {
-      accent: 'text-cyan-400 border-cyan-400/30 shadow-cyan-400/20',
-      glow: 'bg-cyan-400',
-      glowRgb: '34, 211, 238',
-      glowShadow: '0 0 10px rgba(34, 211, 238, 0.1)',
-      glowShadowHover: '0 0 15px rgba(34, 211, 238, 0.18)',
-      btnGradient: 'from-cyan-600 to-blue-900',
-      btnShadow: 'shadow-cyan-900/40',
-      btnBorder: 'border-cyan-500/40',
-      textGradient: 'from-cyan-200 via-cyan-400 to-blue-500'
+    if (spell.school === 'Conjuration') return {
+      accent: 'text-teal-400 border-teal-400/30 shadow-teal-400/20',
+      glow: 'bg-teal-400',
+      glowRgb: '45, 212, 191',
+      glowShadow: '0 0 10px rgba(45, 212, 191, 0.1)',
+      glowShadowHover: '0 0 15px rgba(45, 212, 191, 0.18)',
+      btnGradient: 'from-teal-600 to-teal-900',
+      btnShadow: 'shadow-teal-900/40',
+      btnBorder: 'border-teal-500/40',
+      textGradient: 'from-teal-200 via-teal-400 to-teal-600'
     };
-    if (['Aptitude', 'Don', 'Chronomancie'].includes(spell.school)) return {
-      accent: 'text-amber-400 border-amber-400/30 shadow-amber-400/20',
-      glow: 'bg-amber-400',
-      glowRgb: '251, 191, 36',
-      glowShadow: '0 0 10px rgba(251, 191, 36, 0.1)',
-      glowShadowHover: '0 0 15px rgba(251, 191, 36, 0.18)',
-      btnGradient: 'from-amber-600 to-yellow-900',
-      btnShadow: 'shadow-amber-900/40',
-      btnBorder: 'border-amber-500/40',
-      textGradient: 'from-amber-200 via-amber-400 to-yellow-500'
+    if (spell.school === 'Enchantement') return {
+      accent: 'text-pink-400 border-pink-400/30 shadow-pink-400/20',
+      glow: 'bg-pink-400',
+      glowRgb: '244, 114, 182',
+      glowShadow: '0 0 10px rgba(244, 114, 182, 0.1)',
+      glowShadowHover: '0 0 15px rgba(244, 114, 182, 0.18)',
+      btnGradient: 'from-pink-600 to-pink-900',
+      btnShadow: 'shadow-pink-900/40',
+      btnBorder: 'border-pink-500/40',
+      textGradient: 'from-pink-200 via-pink-400 to-pink-600'
     };
+    if (spell.school === 'Transmutation') return {
+      accent: 'text-yellow-400 border-yellow-400/30 shadow-yellow-400/20',
+      glow: 'bg-yellow-400',
+      glowRgb: '250, 204, 21',
+      glowShadow: '0 0 10px rgba(250, 204, 21, 0.1)',
+      glowShadowHover: '0 0 15px rgba(250, 204, 21, 0.18)',
+      btnGradient: 'from-yellow-600 to-amber-900',
+      btnShadow: 'shadow-yellow-900/40',
+      btnBorder: 'border-yellow-500/40',
+      textGradient: 'from-yellow-200 via-yellow-400 to-amber-500'
+    };
+    if (spell.school === 'Évocation') return {
+      accent: 'text-red-400 border-red-400/30 shadow-red-400/20',
+      glow: 'bg-red-400',
+      glowRgb: '248, 113, 113',
+      glowShadow: '0 0 10px rgba(248, 113, 113, 0.1)',
+      glowShadowHover: '0 0 15px rgba(248, 113, 113, 0.18)',
+      btnGradient: 'from-red-600 to-red-900',
+      btnShadow: 'shadow-red-900/40',
+      btnBorder: 'border-red-500/40',
+      textGradient: 'from-red-200 via-red-400 to-red-600'
+    };
+
+    // Défaut → Violet
     return {
       accent: 'text-violet-400 border-violet-400/30 shadow-violet-400/20',
       glow: 'bg-violet-400',
