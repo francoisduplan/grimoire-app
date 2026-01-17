@@ -1,7 +1,7 @@
 "use client";
 
 import { Spell } from "@/types";
-import { X, Clock, Ruler, Box, Hourglass, Flame, Shield, Skull, Sparkles, Zap, Brain, Move, BookOpen, Hand, Trash2, Lock, Dices, RefreshCw, Wand2, Star, Link } from 'lucide-react';
+import { X, Clock, Ruler, Box, Hourglass, Flame, Shield, Skull, Sparkles, Zap, Brain, Move, BookOpen, Hand, Trash2, Lock, Dices, RefreshCw, Wand2, Star, Link, ChevronDown } from 'lucide-react';
 import { useCharacter } from "@/context/CharacterContext";
 import { clsx } from "clsx";
 import { SPELLS_DATA } from "@/data/spells";
@@ -257,6 +257,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
   
   // État pour upcast (surcharge)
   const [selectedLevel, setSelectedLevel] = useState(spell.level);
+  const [showUpcastMenu, setShowUpcastMenu] = useState(false);
   const canUpcast = spell.level > 0 && spell.higherLevels;
   const upcastLevels = selectedLevel - spell.level;
   
@@ -1455,42 +1456,79 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             className="p-4 bg-[#080808] rounded-b-xl border-t border-white/10 flex flex-col gap-3"
           >
-            {/* Sélecteur d'Upcast */}
+            {/* Sélecteur d'Upcast (repliable) */}
             {canUpcast && effectivePrepared && availableUpcastLevels.length > 1 && (
-              <div className="pb-3 border-b border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-neutral-500 font-cinzel uppercase tracking-[0.2em]">Surcharge</span>
-                  {selectedLevel > spell.level && (
-                    <span className="text-[10px] text-violet-400 font-cinzel">+{upcastLevels} niveau{upcastLevels > 1 ? 'x' : ''}</span>
+              <div className="pb-2 border-b border-white/5">
+                {/* Bouton pour ouvrir/fermer */}
+                <button
+                  onClick={() => setShowUpcastMenu(!showUpcastMenu)}
+                  className="w-full flex items-center justify-between py-2 text-neutral-400 hover:text-neutral-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-violet-400" />
+                    <span className="text-xs font-cinzel uppercase tracking-wider">
+                      {selectedLevel > spell.level 
+                        ? `Surcharge Niv.${selectedLevel}` 
+                        : "Surcharger"
+                      }
+                    </span>
+                    {selectedLevel > spell.level && (
+                      <span className="text-[10px] text-violet-400 font-cinzel bg-violet-500/20 px-2 py-0.5 rounded">
+                        +{upcastLevels} niv.
+                      </span>
+                    )}
+                  </div>
+                  <motion.div
+                    animate={{ rotate: showUpcastMenu ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown size={14} />
+                  </motion.div>
+                </button>
+                
+                {/* Menu déroulant */}
+                <AnimatePresence>
+                  {showUpcastMenu && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex gap-2 pt-3">
+                        {availableUpcastLevels.map(level => {
+                          const slot = character.slots.find(s => s.level === level);
+                          const remaining = slot ? slot.max - slot.used : 0;
+                          const isSelected = selectedLevel === level;
+                          const isUpcast = level > spell.level;
+                          
+                          return (
+                            <button
+                              key={level}
+                              onClick={() => {
+                                setSelectedLevel(level);
+                                setShowUpcastMenu(false);
+                              }}
+                              className={clsx(
+                                "flex-1 py-2 rounded-lg font-cinzel transition-all flex flex-col items-center justify-center gap-0.5",
+                                isSelected 
+                                  ? isUpcast
+                                    ? "bg-violet-500/20 border-2 border-violet-400 text-violet-300"
+                                    : "bg-white/10 border-2 border-white/30 text-white"
+                                  : "bg-white/5 border border-white/10 text-neutral-500 hover:bg-white/10 hover:text-neutral-300"
+                              )}
+                            >
+                              <span className="text-[10px] text-neutral-500">Niv.</span>
+                              <span className="font-bold text-lg leading-none">{level}</span>
+                              <span className="text-[10px] opacity-50">{remaining}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
                   )}
-                </div>
-                <div className="flex gap-2">
-                  {availableUpcastLevels.map(level => {
-                    const slot = character.slots.find(s => s.level === level);
-                    const remaining = slot ? slot.max - slot.used : 0;
-                    const isSelected = selectedLevel === level;
-                    const isUpcast = level > spell.level;
-                    
-                    return (
-                      <button
-                        key={level}
-                        onClick={() => setSelectedLevel(level)}
-                        className={clsx(
-                          "flex-1 py-3 rounded-lg font-cinzel transition-all flex flex-col items-center justify-center gap-0.5",
-                          isSelected 
-                            ? isUpcast
-                              ? "bg-violet-500/20 border-2 border-violet-400 text-violet-300"
-                              : "bg-white/10 border-2 border-white/30 text-white"
-                            : "bg-white/5 border border-white/10 text-neutral-500 hover:bg-white/10 hover:text-neutral-300"
-                        )}
-                      >
-                        <span className="text-xs text-neutral-500">Niv.</span>
-                        <span className="font-bold text-xl leading-none">{level}</span>
-                        <span className="text-[10px] opacity-50">{remaining} dispo</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                </AnimatePresence>
               </div>
             )}
             
