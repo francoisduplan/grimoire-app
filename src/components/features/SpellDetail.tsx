@@ -1456,33 +1456,49 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             className="p-4 bg-[#080808] rounded-b-xl border-t border-white/10 flex flex-col gap-3"
           >
-            {/* Sélecteur d'Upcast (repliable) */}
+            {/* Sélecteur d'Upcast (dropdown élégant) */}
             {canUpcast && effectivePrepared && availableUpcastLevels.length > 1 && (
-              <div className="pb-2 border-b border-white/5">
-                {/* Bouton pour ouvrir/fermer */}
+              <div className="relative pb-2 border-b border-white/5">
+                {/* Bouton principal - style select */}
                 <button
                   onClick={() => setShowUpcastMenu(!showUpcastMenu)}
-                  className="w-full flex items-center justify-between py-2 text-neutral-400 hover:text-neutral-200 transition-colors"
+                  className={clsx(
+                    "w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all",
+                    selectedLevel > spell.level
+                      ? "bg-violet-500/10 border border-violet-500/30"
+                      : "bg-white/5 border border-white/10 hover:bg-white/10"
+                  )}
                 >
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-violet-400" />
-                    <span className="text-xs font-cinzel uppercase tracking-wider">
-                      {selectedLevel > spell.level 
-                        ? `Surcharge Niv.${selectedLevel}` 
-                        : "Surcharger"
-                      }
-                    </span>
-                    {selectedLevel > spell.level && (
-                      <span className="text-[10px] text-violet-400 font-cinzel bg-violet-500/20 px-2 py-0.5 rounded">
-                        +{upcastLevels} niv.
+                  <div className="flex items-center gap-3">
+                    <div className={clsx(
+                      "w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold font-cinzel",
+                      selectedLevel > spell.level
+                        ? "bg-violet-500/30 text-violet-300"
+                        : "bg-white/10 text-neutral-400"
+                    )}>
+                      {selectedLevel}
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className={clsx(
+                        "text-sm font-cinzel",
+                        selectedLevel > spell.level ? "text-violet-300" : "text-neutral-300"
+                      )}>
+                        Emplacement Niv. {selectedLevel}
                       </span>
-                    )}
+                      <span className="text-[10px] text-neutral-500">
+                        {selectedLevel > spell.level 
+                          ? `Surcharge +${upcastLevels} niveau${upcastLevels > 1 ? 'x' : ''}`
+                          : "Niveau de base"
+                        }
+                      </span>
+                    </div>
                   </div>
                   <motion.div
                     animate={{ rotate: showUpcastMenu ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
+                    className="text-neutral-500"
                   >
-                    <ChevronDown size={14} />
+                    <ChevronDown size={18} />
                   </motion.div>
                 </button>
                 
@@ -1490,42 +1506,70 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
                 <AnimatePresence>
                   {showUpcastMenu && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-50 left-0 right-0 mt-2 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden"
                     >
-                      <div className="flex gap-2 pt-3">
-                        {availableUpcastLevels.map(level => {
-                          const slot = character.slots.find(s => s.level === level);
-                          const remaining = slot ? slot.max - slot.used : 0;
-                          const isSelected = selectedLevel === level;
-                          const isUpcast = level > spell.level;
-                          
-                          return (
-                            <button
-                              key={level}
-                              onClick={() => {
+                      {availableUpcastLevels.map((level, idx) => {
+                        const slot = character.slots.find(s => s.level === level);
+                        const remaining = slot ? slot.max - slot.used : 0;
+                        const isSelected = selectedLevel === level;
+                        const isUpcast = level > spell.level;
+                        const isDisabled = remaining === 0;
+                        
+                        return (
+                          <button
+                            key={level}
+                            onClick={() => {
+                              if (!isDisabled) {
                                 setSelectedLevel(level);
                                 setShowUpcastMenu(false);
-                              }}
-                              className={clsx(
-                                "flex-1 py-2 rounded-lg font-cinzel transition-all flex flex-col items-center justify-center gap-0.5",
-                                isSelected 
+                              }
+                            }}
+                            disabled={isDisabled}
+                            className={clsx(
+                              "w-full flex items-center justify-between px-4 py-3 transition-all",
+                              idx !== availableUpcastLevels.length - 1 && "border-b border-white/5",
+                              isDisabled 
+                                ? "opacity-40 cursor-not-allowed"
+                                : isSelected
                                   ? isUpcast
-                                    ? "bg-violet-500/20 border-2 border-violet-400 text-violet-300"
-                                    : "bg-white/10 border-2 border-white/30 text-white"
-                                  : "bg-white/5 border border-white/10 text-neutral-500 hover:bg-white/10 hover:text-neutral-300"
-                              )}
-                            >
-                              <span className="text-[10px] text-neutral-500">Niv.</span>
-                              <span className="font-bold text-lg leading-none">{level}</span>
-                              <span className="text-[10px] opacity-50">{remaining}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                                    ? "bg-violet-500/20 text-violet-300"
+                                    : "bg-white/10 text-white"
+                                  : "hover:bg-white/5 text-neutral-400 hover:text-neutral-200"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={clsx(
+                                "w-7 h-7 rounded flex items-center justify-center text-sm font-bold font-cinzel",
+                                isUpcast ? "bg-violet-500/20 text-violet-400" : "bg-white/10 text-neutral-500"
+                              )}>
+                                {level}
+                              </div>
+                              <div className="flex flex-col items-start">
+                                <span className="text-sm font-cinzel">
+                                  Emplacement Niv. {level}
+                                </span>
+                                {isUpcast && (
+                                  <span className="text-[10px] text-violet-400/70">
+                                    +{level - spell.level} niveau{level - spell.level > 1 ? 'x' : ''} de surcharge
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className={clsx(
+                              "text-xs font-cinzel px-2 py-1 rounded",
+                              remaining > 0 
+                                ? "bg-white/5 text-neutral-400" 
+                                : "bg-red-500/10 text-red-400"
+                            )}>
+                              {remaining} dispo
+                            </span>
+                          </button>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
