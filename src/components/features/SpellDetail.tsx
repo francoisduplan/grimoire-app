@@ -858,14 +858,15 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
 
   return (
     <motion.div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
+      style={{ overscrollBehavior: 'contain' }}
     >
       <motion.div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+        className="absolute inset-0 bg-black/80 backdrop-blur-md touch-none" 
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -874,7 +875,7 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
       
         <motion.div 
         className={clsx(
-          "relative w-full max-w-md bg-[#080808] rounded-xl shadow-2xl border transition-colors duration-700 flex flex-col max-h-[90vh] z-10",
+          "relative w-full max-w-md bg-[#080808] rounded-xl shadow-2xl border transition-colors duration-700 flex flex-col max-h-[85vh] z-10 my-auto overflow-hidden",
           isThisFreeCast 
             ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]" 
             : justUnlocked 
@@ -951,10 +952,10 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
         {/* --- BODY --- */}
         <div 
           className={clsx(
-            "flex-1 px-8 pb-8 relative min-h-[300px]",
-            rollState === 'rolling' ? "overflow-hidden" : rollState === 'result' ? "overflow-visible" : "overflow-y-auto scrollbar-hide"
+            "flex-1 px-8 pb-8 relative",
+            rollState === 'rolling' ? "overflow-hidden" : "overflow-y-auto"
           )}
-          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
         >
           
           <AnimatePresence mode="wait">
