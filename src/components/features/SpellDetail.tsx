@@ -381,6 +381,24 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
     }
   }, [isThisFreeCast, justUnlocked]);
 
+  // Bloquer le scroll du body quand la modal est ouverte (fix mobile)
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${window.scrollY}px`;
+    
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = originalStyle;
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, []);
+
   const spellSlot = character.slots.find(s => s.level === spell.level);
   const hasSlotsAvailable = spell.level === 0 || (spellSlot && spellSlot.used < spellSlot.max) || isThisFreeCast;
   
@@ -931,10 +949,13 @@ export function SpellDetail({ spell, onClose }: SpellDetailProps) {
         </div>
 
         {/* --- BODY --- */}
-        <div className={clsx(
-          "flex-1 px-8 pb-8 relative min-h-[300px]",
-          rollState === 'rolling' ? "overflow-hidden" : rollState === 'result' ? "overflow-visible" : "overflow-y-auto scrollbar-hide"
-        )}>
+        <div 
+          className={clsx(
+            "flex-1 px-8 pb-8 relative min-h-[300px]",
+            rollState === 'rolling' ? "overflow-hidden" : rollState === 'result' ? "overflow-visible" : "overflow-y-auto scrollbar-hide"
+          )}
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+        >
           
           <AnimatePresence mode="wait">
             {/* ETAT 1: Stats par défaut (Si pas de jet en cours) */}
